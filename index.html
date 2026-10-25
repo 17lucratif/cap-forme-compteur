@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Compteur">
+<meta name="theme-color" content="#F1F3EF">
+<title>Cap Forme · Compteur</title>
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' fill='%232C6A4D'/%3E%3Ctext x='90' y='120' font-size='96' text-anchor='middle' fill='white' font-family='Arial' font-weight='bold'%3E12%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Source+Sans+3:wght@400;600;700&display=swap">
+<style>
+:root{
+  --bg:#F1F3EF; --surface:#FFFFFF; --sunk:#E6EAE4; --line:#D3D9D0;
+  --fg:#17221D; --muted:#5B6862;
+  --accent:#2C6A4D; --accent-soft:#DCEBE2; --on-accent:#FFFFFF;
+  --gold:#C98A1B; --gold-soft:#F6E7C8;
+  --warn:#B4482F; --warn-soft:#F5DDD6;
+  --display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"Source Sans 3",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111815; --surface:#18211D; --sunk:#202B26; --line:#2C3832;
+  --fg:#E7EEE9; --muted:#9AA9A1;
+  --accent:#6CC198; --accent-soft:#1F3A2D; --on-accent:#0E1A14;
+  --gold:#E9B04A; --gold-soft:#3A2E16;
+  --warn:#EE8A6E; --warn-soft:#3B2219; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111815; --surface:#18211D; --sunk:#202B26; --line:#2C3832;
+  --fg:#E7EEE9; --muted:#9AA9A1;
+  --accent:#6CC198; --accent-soft:#1F3A2D; --on-accent:#0E1A14;
+  --gold:#E9B04A; --gold-soft:#3A2E16;
+  --warn:#EE8A6E; --warn-soft:#3B2219; color-scheme:dark}
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.45;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+.wrap{max-width:560px;margin:0 auto;padding:12px max(16px,env(safe-area-inset-left)) 40px;display:grid;gap:12px}
+h1{font-family:var(--display);font-weight:700;font-size:2rem;margin:4px 0 0;line-height:1}
+h1 small{display:block;font-family:var(--body);font-weight:400;font-size:.85rem;color:var(--muted);margin-top:4px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.btn{font-family:var(--display);font-weight:600;font-size:1.1rem;letter-spacing:.03em;border:0;border-radius:10px;padding:12px 18px;background:var(--accent);color:var(--on-accent);cursor:pointer}
+.btn.ghost{background:var(--sunk);color:var(--fg)}
+.btn:disabled{opacity:.5}
+.note{font-size:.85rem;color:var(--muted)}
+.lvl{display:flex;gap:6px;flex-wrap:wrap}
+.lvl button{font:inherit;font-size:.9rem;border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:999px;padding:6px 12px;cursor:pointer}
+.lvl button[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.ico{width:40px;height:40px;fill:none;stroke:var(--fg);stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.ico .prop{stroke:var(--muted);stroke-width:2}
+.ico .dash{stroke:var(--accent);stroke-width:2;stroke-dasharray:3 4}
+.ico.big{width:112px;height:112px}
+/* coach / compteur */
+.stage{position:relative;aspect-ratio:3/4;max-height:64vh;width:100%;margin:0 auto;background:#0F1512;border-radius:16px;overflow:hidden;display:grid;place-items:center}
+.stage video,.stage canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
+.stage .pic .ico{width:170px;height:170px;stroke:#E7EEE9}
+.stage .pic .ico .prop{stroke:#6F7D76}
+.track{position:absolute;right:22px;top:50%;width:10px;height:150px;margin-top:-75px;border-radius:99px;background:rgba(255,255,255,.15)}
+.track i{position:absolute;left:-6px;top:0;width:22px;height:22px;border-radius:50%;background:var(--gold);transition-property:top;transition-timing-function:ease-in-out}
+.cnt{position:absolute;top:14px;left:14px;z-index:2;background:rgba(0,0,0,.62);color:#fff;border-radius:14px;padding:10px 14px 8px;display:grid;justify-items:center;line-height:1;min-width:84px}
+.cnt b{font-family:var(--display);font-size:3.4rem;font-weight:700;font-variant-numeric:tabular-nums}
+.cnt span{font-family:var(--display);font-size:1.1rem;opacity:.75}
+.cnt small{font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;opacity:.75;margin-top:5px;max-width:110px;text-align:center}
+.cnt.pop b{animation:pop .35s ease-out}
+@keyframes pop{50%{transform:scale(1.3);color:#E9B04A}}
+.setb{position:absolute;top:14px;right:14px;z-index:2;background:rgba(0,0,0,.62);color:#fff;border-radius:999px;padding:4px 12px;font-family:var(--display);font-weight:600;font-size:1rem}
+.setb:empty{display:none}
+.cue{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);z-index:2;max-width:calc(100% - 24px);text-align:center;font-family:var(--display);font-weight:700;font-size:1.7rem;letter-spacing:.04em;text-transform:uppercase;padding:8px 22px;border-radius:999px;background:var(--accent);color:var(--on-accent)}
+.cue.up{background:#E9B04A;color:#17221D}
+.cue.warn{background:#C4553A;color:#fff}
+.cue.idle{background:rgba(0,0,0,.62);color:#fff;text-transform:none;font-size:1.3rem}
+.stepper{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--surface)}
+.stepper button{font:inherit;font-size:1.25rem;width:40px;height:40px;border:0;background:var(--sunk);color:var(--fg);cursor:pointer}
+.stepper output{min-width:78px;text-align:center;font-family:var(--display);font-weight:600;font-size:1.1rem}
+.chk{display:inline-flex;gap:6px;align-items:center;font-size:.95rem;cursor:pointer}
+.chk input{width:18px;height:18px;accent-color:var(--accent)}
+</style></head><body>
+<div class="wrap">
+<h1>Compteur<small>Cap Forme · répétitions guidées ou suivies à la caméra</small></h1>
+<div id="coach" style="display:grid;gap:12px">
+        <div class="lvl" id="cEx"></div>
+        <div class="row">
+          <span class="stepper"><button id="cRm" aria-label="Moins de répétitions">−</button><output id="cReps">12 rép.</output><button id="cRp" aria-label="Plus de répétitions">+</button></span>
+          <span class="stepper"><button id="cSm" aria-label="Moins de séries">−</button><output id="cSets">1 série</output><button id="cSp" aria-label="Plus de séries">+</button></span>
+          <label class="chk"><input type="checkbox" id="cVoice" checked> Voix</label>
+        </div>
+        <div class="stage">
+          <video id="cVid" playsinline muted hidden></video>
+          <canvas id="cCan" hidden></canvas>
+          <div class="pic" id="cPic"></div>
+          <div class="track" id="cTrack"><i id="cDot"></i></div>
+          <div class="cnt" id="cCnt"><b id="cN">0</b><span id="cOf">/12</span><small id="cLbl">Squats</small></div>
+          <div class="setb" id="cSet"></div>
+          <div class="cue idle" id="cCue">Prêt</div>
+        </div>
+        <div class="row" style="justify-content:center">
+          <button class="btn" id="cGuide">Démarrer guidé</button>
+          <button class="btn ghost" id="cCam">Avec la caméra</button>
+          <button class="btn ghost" id="cPlus" hidden>+1</button>
+          <button class="btn ghost" id="cStop" hidden>Arrêter</button>
+        </div>
+        <p class="note" id="cMsg" style="margin:0" aria-live="polite"></p>
+        <p class="note" id="cTip" style="margin:0"></p>
+        <p class="note" id="cToday" style="margin:0"></p>
+      </div>
+      
+<p class="note" style="margin:0">Douleur articulaire ou essoufflement inhabituel : on arrête et on en parle à son médecin. Les images de la caméra restent sur le téléphone, rien n’est envoyé.</p>
+</div>
+<script>
+(function(){
+'use strict';
+const ICONS={
+  marche:{h:[32,10],b:['32,15 32,34','32,19 25,30','32,19 39,27 43,22','32,34 30,46 30,58','32,34 42,40 40,50'],p:['14,58 50,58']},
+  bras:{h:[32,10],b:['32,15 32,36','32,20 18,20','32,20 46,20','32,36 28,58','32,36 36,58'],d:['M18 13a7 7 0 1 0 0.1 0','M46 13a7 7 0 1 0 0.1 0']},
+  squat:{h:[33,15],b:['30,20 26,38','26,38 38,40 36,58','29,24 45,26'],p:['10,40 24,40','12,40 12,58','22,40 22,58','12,40 12,24']},
+  pompes:{h:[43,13],b:['20,58 30,37 40,18','40,20 46,29 53,24'],p:['54,6 54,58','10,58 54,58']},
+  gainage:{h:[51,39],b:['47,44 26,50','47,44 47,57 56,57','26,50 20,57 8,57'],p:['4,58 60,58']},
+  fente:{h:[30,10],b:['30,15 30,34','30,34 41,44 41,58','30,34 23,48 11,55','30,19 41,30 49,37'],p:['46,37 58,37','52,37 52,58','6,58 58,58']},
+  bras_haut:{h:[32,13],b:['32,18 32,36','32,21 21,5','32,21 43,5','32,36 28,58','32,36 36,58'],p:['14,58 50,58']},
+  respiration:{h:[10,50],b:['15,53 38,53','38,53 46,43 54,56','19,53 26,46 30,51'],p:['2,58 62,58'],d:['M22 40q3 -4 6 0t6 0']},
+  genoux:{h:[11,51],b:['16,54 36,54','36,54 32,38 44,35','20,53 30,41'],p:['2,58 62,58']},
+  ischios:{h:[10,51],b:['15,54 36,54','36,54 58,55','36,54 42,14','18,53 30,36'],p:['2,58 62,58'],d:['M30 36L42 14']},
+  fessier:{h:[10,51],b:['15,54 34,54','34,54 42,40 52,32','34,54 47,45 41,40','18,53 36,44'],p:['2,58 62,58']},
+  psoas:{h:[36,11],b:['36,16 34,36','34,36 46,42 46,57','34,36 24,57 8,57','35,21 44,38'],p:['4,58 60,58']},
+  quadri:{h:[28,10],b:['28,15 28,34','28,34 28,58','28,34 30,47 20,37','28,19 20,29 20,37','28,19 50,22'],p:['52,6 52,58','10,58 52,58']},
+  mollets:{h:[42,13],b:['40,18 32,36','32,36 42,46 42,57','32,36 12,57','40,21 54,24'],p:['56,6 56,58','6,58 56,58']},
+  barre:{h:[32,14],b:['24,6 31,20','40,6 33,20','32,20 32,38','32,38 41,44 41,50','32,38 37,45 37,50'],p:['12,6 52,6','34,50 52,50','35,50 35,58','51,50 51,58']},
+  pecto:{h:[30,10],b:['30,15 30,34','30,19 44,19 44,8','30,19 24,30','30,34 36,58','30,34 24,58'],p:['47,4 47,58','12,58 54,58']},
+  enfant:{h:[45,53],b:['6,57 24,57','24,57 12,44','12,44 26,42 40,50','40,52 60,57'],p:['4,58 62,58']},
+  pont:{h:[8,51],b:['13,54 30,38','30,38 44,36 46,57','14,56 30,57'],p:['2,58 62,58']},
+  tapis:{h:[30,10],b:['30,15 28,32','28,32 36,50','28,32 22,51','30,19 38,28','30,19 23,28'],p:['6,52 50,49','6,57 50,54','6,52 6,57','50,49 54,24 46,26']},
+  eau:{o:['<path d="M32 8 C22 24 16 32 16 40 a16 16 0 0 0 32 0 C48 32 42 24 32 8 Z"/>','<path d="M24 42 a8 8 0 0 0 8 8" opacity=".6"/>']},
+  assiette:{o:['<circle cx="34" cy="34" r="18"/>','<circle cx="34" cy="34" r="10" opacity=".55"/>','<path d="M8 14 v14 M5 14 v8 a3 3 0 0 0 6 0 v-8 M8 28 v26"/>','<path d="M58 14 c-5 4 -5 14 0 18 v22"/>']},
+  lune:{o:['<path d="M40 10 a22 22 0 1 0 14 34 a18 18 0 0 1 -14 -34 Z"/>','<path d="M18 14 l2 4 l4 0 l-3 3 l1 4 l-4 -2 l-4 2 l1 -4 l-3 -3 l4 0 Z" stroke-width="2"/>']}
+};
+function icon(k,cls){
+  const d=ICONS[k]; if(!d) return '';
+  let g='';
+  (d.p||[]).forEach(s=>g+='<polyline points="'+s+'" class="prop"/>');
+  (d.b||[]).forEach(s=>g+='<polyline points="'+s+'"/>');
+  (d.d||[]).forEach(s=>g+='<path d="'+s+'" class="dash"/>');
+  if(d.h) g+='<circle cx="'+d.h[0]+'" cy="'+d.h[1]+'" r="4.5" class="head"/>';
+  (d.o||[]).forEach(s=>g+=s);
+  return '<svg class="ico '+(cls||'')+'" viewBox="0 0 64 64" aria-hidden="true">'+g+'</svg>';
+}
+
+
+const $=id=>document.getElementById(id);
+const pad=n=>String(n).padStart(2,'0');
+const fmt=s=>Math.floor(s/60)+':'+pad(s%60);
+const d0=new Date(); const TODAY=d0.getFullYear()+'-'+pad(d0.getMonth()+1)+'-'+pad(d0.getDate());
+const LS='capforme-compteur-v1';
+let state={reps:{}};
+try{ const s=JSON.parse(localStorage.getItem(LS)||'null'); if(s&&s.reps) state=s; }catch(e){}
+function save(){ try{ localStorage.setItem(LS,JSON.stringify(state)); }catch(e){} }
+let actx=null;
+function beep(f,d){try{if(!actx)return;const o=actx.createOscillator(),g=actx.createGain();o.frequency.value=f;o.connect(g);g.connect(actx.destination);g.gain.setValueAtTime(.15,actx.currentTime);g.gain.exponentialRampToValueAtTime(.001,actx.currentTime+d);o.start();o.stop(actx.currentTime+d)}catch(e){}}
+/* ---------- compteur de répétitions ---------- */
+// cues[0] = mouvement vers le bas, cues[1] = vers le haut ; la répétition compte quand l'angle repasse au-dessus de "up" après être passé sous "down"
+const COACH=[
+  {id:'squat',n:'Squats',short:'squats',ico:'squat',reps:12,joint:'knee',down:105,up:160,tempo:[2,1.5],cues:['Descends','Remonte'],warn:'Plus bas',tip:'téléphone posé de face ou de profil, pieds largeur d’épaules, corps entier dans l’image.'},
+  {id:'pompes',n:'Pompes inclinées',short:'pompes',ico:'pompes',reps:10,joint:'elbow',down:105,up:155,tempo:[2,1.5],cues:['Descends','Pousse'],warn:'Plus bas',tip:'téléphone posé de profil, à hauteur de la table.'},
+  {id:'fente',n:'Fentes arrière',short:'fentes',ico:'fente',reps:10,joint:'knee',down:110,up:155,tempo:[2,1.5],cues:['Descends','Remonte'],warn:'Plus bas',tip:'téléphone de profil ; alternez les jambes, une main sur un meuble si besoin.'},
+  {id:'pont',n:'Ponts fessiers',short:'ponts fessiers',ico:'pont',reps:15,joint:'hip',down:150,up:165,tempo:[1.5,2],cues:['Redescends','Monte les hanches'],upFirst:true,tip:'téléphone posé au sol, de profil, à 2 m.'}
+];
+const JOINTS={knee:[[23,25,27],[24,26,28]],elbow:[[11,13,15],[12,14,16]],hip:[[11,23,25],[12,24,26]]};
+const BONES=[[11,12],[11,13],[13,15],[12,14],[14,16],[11,23],[12,24],[23,24],[23,25],[25,27],[24,26],[26,28]];
+const MP='https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/';
+let cx=COACH[0], cReps=cx.reps, cSets=1, cRun=null, cWake=null, pose=null, stream=null, busy=false, lastCue='';
+function ensureAudio(){ try{ if(!actx){const C=window.AudioContext||window.webkitAudioContext; if(C) actx=new C();} if(actx&&actx.state==='suspended') actx.resume(); }catch(e){} }
+function speak(t,cut){ if(!$('cVoice').checked||!window.speechSynthesis||!t) return; try{ if(cut) speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(t); u.lang='fr-FR'; u.rate=1.1; speechSynthesis.speak(u); }catch(e){} }
+function cue(t,cls,say){ const c=$('cCue'); if(lastCue!==t+cls){ c.textContent=t; c.className='cue '+(cls||''); lastCue=t+cls; } if(say) speak(say===true?t:say,true); }
+function msg(t){ $('cMsg').textContent=t||''; }
+function dot(down,secs){ const d=$('cDot'); d.style.transitionDuration=(secs||0)+'s'; d.style.top=(down?128:0)+'px'; }
+function renderToday(){
+  const r=(state.reps||{})[TODAY]||{};
+  const parts=COACH.filter(e=>r[e.id]).map(e=>r[e.id]+' '+(r[e.id]>1?e.short:e.short.replace(/s\b/g,'')));
+  $('cToday').innerHTML=parts.length?'<b>Aujourd’hui :</b> '+parts.join(' · '):'';
+}
+function renderCoach(){
+  const box=$('cEx'); box.innerHTML='';
+  COACH.forEach(e=>{ const b=document.createElement('button'); b.textContent=e.n; b.setAttribute('aria-pressed',e===cx);
+    b.addEventListener('click',()=>{ if(cRun) return; cx=e; cReps=e.reps; renderCoach(); }); box.appendChild(b); });
+  $('cReps').textContent=cReps+' rép.'; $('cSets').textContent=cSets+(cSets>1?' séries':' série');
+  $('cOf').textContent='/'+cReps; $('cLbl').textContent=cx.n; $('cTip').innerHTML='<b>Avec la caméra :</b> '+cx.tip;
+  if(!cRun){ $('cN').textContent='0'; $('cPic').innerHTML=icon(cx.ico,'big'); dot(!!cx.upFirst,0); $('cSet').textContent=cSets>1?'Série 1/'+cSets:''; cue('Prêt','idle'); }
+  renderToday();
+}
+function stepper(id,d,min,max,isSets){ $(id).addEventListener('click',()=>{ if(cRun) return; if(isSets) cSets=Math.min(max,Math.max(min,cSets+d)); else cReps=Math.min(max,Math.max(min,cReps+d)); renderCoach(); }); }
+stepper('cRm',-1,3,40); stepper('cRp',1,3,40); stepper('cSm',-1,1,4,true); stepper('cSp',1,1,4,true);
+function later(fn,ms){ if(cRun) cRun.t.push(setTimeout(fn,ms)); }
+function setButtons(on,kind){
+  $('cGuide').hidden=$('cCam').hidden=on; $('cStop').hidden=!on; $('cPlus').hidden=!(on&&kind==='cam');
+  document.querySelectorAll('#cEx button,.stepper button').forEach(b=>b.disabled=on);
+}
+async function startSession(kind){
+  ensureAudio(); cRun={kind,n:0,set:1,stage:'A',min:999,t:[],iv:null,resting:false,lost:0};
+  $('cN').textContent='0'; $('cSet').textContent=cSets>1?'Série 1/'+cSets:''; setButtons(true,kind);
+  try{ if(navigator.wakeLock) cWake=await navigator.wakeLock.request('screen'); }catch(e){}
+  if(kind==='guide'){ cue('Prêt ?','idle','C’est parti. '+cReps+' '+cx.short+'.'); later(guideRep,2200); }
+  else cue(cx.upFirst?cx.cues[1]:cx.cues[0],cx.upFirst?'up':'');
+}
+function guideRep(){
+  if(!cRun||cRun.resting) return;
+  const [a,b]=cx.tempo, first=cRun.n===0;
+  if(cx.upFirst){ cue(cx.cues[1],'up',first); dot(false,a); later(()=>{ cue(cx.cues[0],'',true); dot(true,b); later(count,b*1000); },a*1000); }
+  else { cue(cx.cues[0],'',first); dot(true,a); later(()=>{ cue(cx.cues[1],'up',true); dot(false,b); later(count,b*1000); },a*1000); }
+}
+function count(){
+  if(!cRun||cRun.resting) return;
+  cRun.n++; $('cN').textContent=cRun.n;
+  const c=$('cCnt'); c.classList.remove('pop'); void c.offsetWidth; c.classList.add('pop');
+  const r=state.reps[TODAY]||(state.reps[TODAY]={}); r[cx.id]=(r[cx.id]||0)+1; save(); renderToday();
+  beep(880,.12);
+  if(cRun.n>=cReps){ setDone(); return; }
+  speak(String(cRun.n),false);
+  if(cRun.kind==='guide') later(guideRep,400);
+}
+function setDone(){
+  if(cRun.set>=cSets){ finishCoach(); return; }
+  cRun.resting=true; let r=60; cue('Repos '+fmt(r),'idle','Série '+cRun.set+' terminée. Une minute de repos.');
+  cRun.iv=setInterval(()=>{ r--; if(r<=3&&r>0) beep(660,.08);
+    if(r>0){ cue('Repos '+fmt(r),'idle'); return; }
+    clearInterval(cRun.iv); cRun.set++; cRun.n=0; cRun.stage='A'; cRun.min=999; cRun.resting=false;
+    $('cN').textContent='0'; $('cSet').textContent='Série '+cRun.set+'/'+cSets; beep(880,.25);
+    if(cRun.kind==='guide'){ cue('Série '+cRun.set,'idle','Série '+cRun.set+'.'); later(guideRep,1500); }
+    else cue(cx.upFirst?cx.cues[1]:cx.cues[0],cx.upFirst?'up':'','Série '+cRun.set+'.');
+  },1000);
+}
+function finishCoach(){ const tot=cReps*cSets; stopCoach(true); cue('Bravo ! '+tot+' '+cx.short,'up','Bravo, c’est terminé !'); beep(1046,.6); }
+function stopStream(){ try{ stream&&stream.getTracks().forEach(t=>t.stop()); }catch(e){} stream=null; const v=$('cVid'); v.srcObject=null; v.hidden=true; $('cCan').hidden=true; $('cPic').hidden=false; $('cTrack').hidden=false; }
+function stopCoach(keep){
+  if(!cRun) return;
+  cRun.t.forEach(clearTimeout); clearInterval(cRun.iv); cRun=null;
+  try{ window.speechSynthesis&&speechSynthesis.cancel(); }catch(e){}
+  try{ cWake&&cWake.release(); }catch(e){} cWake=null;
+  stopStream(); setButtons(false); dot(!!cx.upFirst,0);
+  if(!keep) cue('Prêt','idle');
+}
+$('cGuide').addEventListener('click',()=>{ msg(''); startSession('guide'); });
+$('cStop').addEventListener('click',()=>{ stopCoach(); msg(''); });
+$('cPlus').addEventListener('click',()=>{ if(cRun&&!cRun.resting){ count(); cRun.stage='A'; cRun.min=999; } });
+function loadScript(src){ return new Promise((ok,ko)=>{ const s=document.createElement('script'); s.src=src; s.crossOrigin='anonymous'; s.onload=ok; s.onerror=()=>ko(new Error('script')); document.head.appendChild(s); }); }
+function camFail(t){ msg(t+' Le mode guidé fonctionne sans caméra.'); }
+$('cCam').addEventListener('click',async()=>{
+  ensureAudio(); msg('');
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){ camFail('Cette vue ne donne pas accès à la caméra.'); return; }
+  $('cCam').disabled=true; msg('Ouverture de la caméra…'); const t0=Date.now();
+  try{ stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:640},height:{ideal:480}},audio:false}); }
+  catch(e){ $('cCam').disabled=false; camFail(e&&e.name==='NotAllowedError'?'Caméra bloquée ('+(Date.now()-t0<600?'par cette vue, sans demande d’autorisation':'autorisation refusée')+').':'Caméra indisponible dans cette vue ('+(e&&e.name||'erreur')+').'); return; }
+  const v=$('cVid'); v.srcObject=stream; v.hidden=false; $('cPic').hidden=true; $('cTrack').hidden=true;
+  try{ await v.play(); }catch(e){}
+  msg('Chargement du suivi des mouvements (quelques secondes la première fois)…');
+  try{
+    if(!window.Pose) await loadScript(MP+'pose.js');
+    if(!pose){ pose=new window.Pose({locateFile:f=>MP+f}); pose.setOptions({modelComplexity:0,smoothLandmarks:true,minDetectionConfidence:.5,minTrackingConfidence:.5}); pose.onResults(onPose); await pose.initialize(); }
+  }catch(e){ stopStream(); $('cCam').disabled=false; camFail('Le suivi des mouvements n’a pas pu se charger.'); return; }
+  $('cCam').disabled=false; msg('Posez le téléphone à 2-3 m, corps entier visible. Le bouton +1 rattrape une répétition manquée.');
+  $('cCan').hidden=false; await startSession('cam'); loop();
+});
+async function loop(){
+  if(!cRun||cRun.kind!=='cam') return;
+  const v=$('cVid');
+  if(v.readyState>=2&&!busy){ busy=true; try{ await pose.send({image:v}); }catch(e){} busy=false; }
+  requestAnimationFrame(loop);
+}
+function angleAt(L,j,ar){
+  let best=null;
+  JOINTS[j].forEach(([a,b,c])=>{ const A=L[a],B=L[b],C=L[c];
+    if([A,B,C].some(p=>!p||(p.visibility||0)<.5)) return;
+    const x1=(A.x-B.x)*ar,y1=A.y-B.y,x2=(C.x-B.x)*ar,y2=C.y-B.y;
+    const d=Math.acos(Math.max(-1,Math.min(1,(x1*x2+y1*y2)/(Math.hypot(x1,y1)*Math.hypot(x2,y2)||1))))*180/Math.PI;
+    best=best==null?d:Math.min(best,d); });
+  return best;
+}
+function onPose(r){
+  if(!cRun||cRun.kind!=='cam') return;
+  const v=$('cVid'), c=$('cCan'), W=v.videoWidth||640, H=v.videoHeight||480;
+  if(c.width!==W) c.width=W; if(c.height!==H) c.height=H;
+  const g=c.getContext('2d'); g.clearRect(0,0,W,H);
+  const L=r.poseLandmarks;
+  if(!L){ if(++cRun.lost>20&&!cRun.resting) cue('Mets-toi dans l’image','idle'); return; }
+  cRun.lost=0;
+  const used=JOINTS[cx.joint].flat();
+  g.lineCap='round'; g.lineWidth=Math.max(4,W/110); g.strokeStyle='rgba(255,255,255,.92)'; g.shadowColor='rgba(0,0,0,.5)'; g.shadowBlur=6;
+  BONES.forEach(([a,b])=>{ const A=L[a],B=L[b]; if((A.visibility||0)<.4||(B.visibility||0)<.4) return; g.beginPath(); g.moveTo(A.x*W,A.y*H); g.lineTo(B.x*W,B.y*H); g.stroke(); });
+  [11,12,13,14,15,16,23,24,25,26,27,28].forEach(i=>{ const p=L[i]; if((p.visibility||0)<.4) return; g.fillStyle=used.includes(i)?'#E9B04A':'#fff'; g.beginPath(); g.arc(p.x*W,p.y*H,used.includes(i)?W/70:W/110,0,7); g.fill(); });
+  if(cRun.resting) return;
+  const ang=angleAt(L,cx.joint,W/H);
+  if(ang==null){ cue('Recule : corps entier visible','idle'); return; }
+  if(cRun.stage==='A'){
+    cRun.min=Math.min(cRun.min,ang);
+    if(ang<cx.down){ cRun.stage='B'; cue(cx.cues[1],'up'); }
+    else if(cx.warn&&ang>cx.up&&cRun.min<cx.up-25){ cRun.min=999; cRun.warnUntil=Date.now()+1500; cue(cx.warn,'warn',true); }
+    else if(Date.now()>(cRun.warnUntil||0)) cue(cx.cues[0],'');
+  } else if(ang>cx.up){ cRun.stage='A'; cRun.min=999; count(); if(cRun&&!cRun.resting) cue(cx.cues[0],''); }
+}
+
+renderCoach();
+})();
+</script>
+</body></html>
