@@ -65,7 +65,7 @@ h1 small{display:block;font-family:var(--body);font-weight:400;font-size:.85rem;
 @keyframes pop{50%{transform:scale(1.3);color:#E9B04A}}
 .setb{position:absolute;top:14px;right:14px;z-index:2;background:rgba(0,0,0,.62);color:#fff;border-radius:999px;padding:4px 12px;font-family:var(--display);font-weight:600;font-size:1rem}
 .setb:empty{display:none}
-.cue{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);z-index:2;max-width:calc(100% - 24px);text-align:center;font-family:var(--display);font-weight:700;font-size:1.7rem;letter-spacing:.04em;text-transform:uppercase;padding:8px 22px;border-radius:999px;background:var(--accent);color:var(--on-accent)}
+.cue{white-space:nowrap;position:absolute;left:50%;bottom:16px;transform:translateX(-50%);z-index:2;max-width:calc(100% - 24px);text-align:center;font-family:var(--display);font-weight:700;font-size:clamp(1.15rem,6vw,1.7rem);letter-spacing:.04em;text-transform:uppercase;padding:8px 22px;border-radius:999px;background:var(--accent);color:var(--on-accent)}
 .cue.up{background:#E9B04A;color:#17221D}
 .cue.warn{background:#C4553A;color:#fff}
 .cue.idle{background:rgba(0,0,0,.62);color:#fff;text-transform:none;font-size:1.3rem}
@@ -74,9 +74,54 @@ h1 small{display:block;font-family:var(--body);font-weight:400;font-size:.85rem;
 .stepper output{min-width:78px;text-align:center;font-family:var(--display);font-weight:600;font-size:1.1rem}
 .chk{display:inline-flex;gap:6px;align-items:center;font-size:.95rem;cursor:pointer}
 .chk input{width:18px;height:18px;accent-color:var(--accent)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;display:grid;gap:12px}
+h2{font-family:var(--display);font-weight:700;font-size:1.4rem;margin:0}
+.top{display:flex;justify-content:space-between;align-items:flex-end;gap:12px}
+.who{font-size:.9rem;color:var(--muted);text-align:right}
+.who b{color:var(--fg)}
+.link{font:inherit;font-size:.85rem;background:none;border:0;color:var(--accent);text-decoration:underline;cursor:pointer;padding:0}
+.seg{display:grid;grid-template-columns:1fr 1fr;background:var(--sunk);border-radius:10px;padding:4px;gap:4px}
+.seg button{font-family:var(--display);font-weight:600;font-size:1rem;letter-spacing:.03em;text-transform:uppercase;border:0;background:transparent;color:var(--muted);padding:8px;border-radius:7px;cursor:pointer}
+.seg button[aria-selected="true"]{background:var(--surface);color:var(--fg);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.field{display:grid;gap:4px;font-size:.9rem;font-weight:600}
+.field input{font:inherit;font-weight:400;font-size:16px;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:11px 12px}
+.err{color:var(--warn);font-weight:600;font-size:.9rem;margin:0}
+.ok{color:var(--accent);font-weight:600;font-size:.9rem;margin:0}
+ol.board{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+ol.board li{display:grid;grid-template-columns:34px 1fr auto;gap:10px;align-items:center;padding:10px 12px;border-radius:12px;background:var(--sunk)}
+ol.board li.me{background:var(--accent-soft);box-shadow:inset 0 0 0 1px var(--accent)}
+ol.board .rk{font-family:var(--display);font-weight:700;font-size:1.3rem;text-align:center}
+ol.board .pts{font-family:var(--display);font-weight:700;font-size:1.4rem;font-variant-numeric:tabular-nums}
+ol.board small{display:block;color:var(--muted);font-size:.8rem}
+.med1 .rk{color:#C98A1B}.med2 .rk{color:#8C969A}.med3 .rk{color:#A0643A}
 </style></head><body>
 <div class="wrap">
-<h1>Compteur<small>Cap Forme · répétitions guidées ou suivies à la caméra</small></h1>
+<div class="top"><h1>Compteur<small>Cap Forme · répétitions guidées ou suivies à la caméra</small></h1>
+<div class="who" id="who" hidden><b id="whoName"></b><br><button class="link" id="logout">Se déconnecter</button></div></div>
+<div class="card" id="auth" hidden>
+  <div class="seg" role="tablist"><button aria-selected="true" data-a="in">Connexion</button><button aria-selected="false" data-a="up">Créer un compte</button></div>
+  <form id="authForm" style="display:grid;gap:10px" novalidate>
+    <label class="field" id="fPseudo" hidden>Pseudo (visible dans le classement)<input id="aPseudo" autocomplete="nickname" maxlength="20"></label>
+    <label class="field" id="fEmail">E-mail<input id="aEmail" type="email" autocomplete="email" inputmode="email"></label>
+    <label class="field" id="fPass">Mot de passe<input id="aPass" type="password" autocomplete="current-password" minlength="8"></label>
+    <button class="btn" id="aGo" type="submit">Se connecter</button>
+  </form>
+  <button class="link" id="aForgot">Mot de passe oublié ?</button>
+  <p id="aMsg" style="margin:0" aria-live="polite"></p>
+</div>
+<div class="card" id="newPass" hidden>
+  <h2>Nouveau mot de passe</h2>
+  <label class="field">Mot de passe (8 caractères minimum)<input id="npPass" type="password" autocomplete="new-password" minlength="8"></label>
+  <button class="btn" id="npGo">Enregistrer</button>
+  <p id="npMsg" style="margin:0" aria-live="polite"></p>
+</div>
+<div class="card" id="pseudoCard" hidden>
+  <h2>Choisis ton pseudo</h2>
+  <label class="field">Pseudo (visible dans le classement)<input id="psIn" maxlength="20" autocomplete="nickname"></label>
+  <button class="btn" id="psGo">Valider</button>
+  <p id="psMsg" style="margin:0" aria-live="polite"></p>
+</div>
+<div id="app" style="display:grid;gap:12px">
 <div id="coach" style="display:grid;gap:12px">
         <div class="lvl" id="cEx"></div>
         <div class="row">
@@ -104,6 +149,14 @@ h1 small{display:block;font-family:var(--body);font-weight:400;font-size:.85rem;
         <p class="note" id="cToday" style="margin:0"></p>
       </div>
       
+<div class="card" id="boardCard" hidden>
+  <div class="row" style="justify-content:space-between"><h2>Classement</h2><button class="link" id="bRefresh">Actualiser</button></div>
+  <div class="seg"><button aria-selected="true" data-p="semaine">Cette semaine</button><button aria-selected="false" data-p="mois">Ce mois</button></div>
+  <ol class="board" id="board"></ol>
+  <p class="note" id="bNote" style="margin:0"></p>
+</div>
+<p class="note" id="sync" style="margin:0"></p>
+</div>
 <p class="note" style="margin:0">Douleur articulaire ou essoufflement inhabituel : on arrête et on en parle à son médecin. Les images de la caméra restent sur le téléphone, rien n’est envoyé.</p>
 </div>
 <script>
@@ -150,9 +203,10 @@ const pad=n=>String(n).padStart(2,'0');
 const fmt=s=>Math.floor(s/60)+':'+pad(s%60);
 const d0=new Date(); const TODAY=d0.getFullYear()+'-'+pad(d0.getMonth()+1)+'-'+pad(d0.getDate());
 const LS='capforme-compteur-v1';
-let state={reps:{}};
-try{ const s=JSON.parse(localStorage.getItem(LS)||'null'); if(s&&s.reps) state=s; }catch(e){}
-function save(){ try{ localStorage.setItem(LS,JSON.stringify(state)); }catch(e){} }
+let state={reps:{}}, uid='local';
+function loadState(){ state={reps:{}}; try{ const s=JSON.parse(localStorage.getItem(LS+'-'+uid)||'null'); if(s&&s.reps) state=s; }catch(e){} }
+function save(){ try{ localStorage.setItem(LS+'-'+uid,JSON.stringify(state)); }catch(e){} }
+loadState();
 let actx=null;
 function beep(f,d){try{if(!actx)return;const o=actx.createOscillator(),g=actx.createGain();o.frequency.value=f;o.connect(g);g.connect(actx.destination);g.gain.setValueAtTime(.15,actx.currentTime);g.gain.exponentialRampToValueAtTime(.001,actx.currentTime+d);o.start();o.stop(actx.currentTime+d)}catch(e){}}
 /* ---------- compteur de répétitions ---------- */
@@ -208,7 +262,7 @@ function guideRep(){
 }
 function count(){
   if(!cRun||cRun.resting) return;
-  cRun.n++; $('cN').textContent=cRun.n;
+  cRun.n++; cRun.unsent=(cRun.unsent||0)+1; $('cN').textContent=cRun.n;
   const c=$('cCnt'); c.classList.remove('pop'); void c.offsetWidth; c.classList.add('pop');
   const r=state.reps[TODAY]||(state.reps[TODAY]={}); r[cx.id]=(r[cx.id]||0)+1; save(); renderToday();
   beep(880,.12);
@@ -217,6 +271,7 @@ function count(){
   if(cRun.kind==='guide') later(guideRep,400);
 }
 function setDone(){
+  flushRun();
   if(cRun.set>=cSets){ finishCoach(); return; }
   cRun.resting=true; let r=60; cue('Repos '+fmt(r),'idle','Série '+cRun.set+' terminée. Une minute de repos.');
   cRun.iv=setInterval(()=>{ r--; if(r<=3&&r>0) beep(660,.08);
@@ -231,7 +286,7 @@ function finishCoach(){ const tot=cReps*cSets; stopCoach(true); cue('Bravo ! '+t
 function stopStream(){ try{ stream&&stream.getTracks().forEach(t=>t.stop()); }catch(e){} stream=null; const v=$('cVid'); v.srcObject=null; v.hidden=true; $('cCan').hidden=true; $('cPic').hidden=false; $('cTrack').hidden=false; }
 function stopCoach(keep){
   if(!cRun) return;
-  cRun.t.forEach(clearTimeout); clearInterval(cRun.iv); cRun=null;
+  flushRun(); cRun.t.forEach(clearTimeout); clearInterval(cRun.iv); cRun=null;
   try{ window.speechSynthesis&&speechSynthesis.cancel(); }catch(e){}
   try{ cWake&&cWake.release(); }catch(e){} cWake=null;
   stopStream(); setButtons(false); dot(!!cx.upFirst,0);
@@ -296,6 +351,121 @@ function onPose(r){
   } else if(ang>cx.up){ cRun.stage='A'; cRun.min=999; count(); if(cRun&&!cRun.resting) cue(cx.cues[0],''); }
 }
 
+/* ---------- comptes & classement (Supabase) ---------- */
+const SB_URL='', SB_KEY='';
+const SB_JS='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.95.3/dist/umd/supabase.js';
+const EXN={squat:'squats',pompes:'pompes',fente:'fentes',pont:'ponts'};
+const PAGE_URL=location.origin+location.pathname;
+let sb=null, me=null, period='semaine';
+const QK=LS+'-queue';
+function queue(){ try{ return JSON.parse(localStorage.getItem(QK)||'[]'); }catch(e){ return []; } }
+function setQueue(q){ try{ localStorage.setItem(QK,JSON.stringify(q)); }catch(e){} }
+function syncNote(){ const n=queue().filter(x=>me&&x.user_id===me.id).length; $('sync').textContent=n?n+' série'+(n>1?'s':'')+' en attente d’envoi (pas de réseau ?)':''; }
+function flushRun(){ if(cRun&&cRun.unsent){ logReps(cx.id,cRun.unsent); cRun.unsent=0; } }
+function logReps(ex,n){
+  if(!sb||!me) return;
+  const q=queue(); q.push({k:Date.now()+'-'+Math.random().toString(36).slice(2),user_id:me.id,exercise:ex,count:n,done_on:TODAY}); setQueue(q); sendQueue();
+}
+let sending=false;
+async function sendQueue(){
+  if(!sb||!me||sending) return; sending=true;
+  try{
+    const mine=queue().filter(x=>x.user_id===me.id);
+    if(mine.length){ const {error}=await sb.from('reps').insert(mine.map(({k,...r})=>r));
+      if(!error){ const sent=mine.map(m=>m.k); setQueue(queue().filter(x=>!sent.includes(x.k))); loadBoard(); } }
+  }catch(e){} sending=false; syncNote();
+}
+function monday(){ const d=new Date(); d.setHours(12); d.setDate(d.getDate()-((d.getDay()+6)%7)); return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
+function esc(t){ return String(t==null?'':t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+async function loadBoard(){
+  if(!sb||!me) return;
+  const from= period==='semaine'? monday() : TODAY.slice(0,8)+'01';
+  const [{data:rows,error:e1},{data:profs,error:e2}]=await Promise.all([
+    sb.from('reps').select('user_id,exercise,count').gte('done_on',from).limit(5000),
+    sb.from('profiles').select('id,pseudo')]);
+  if(e1||e2){ $('bNote').textContent='Classement indisponible pour le moment.'; return; }
+  const by={}; (profs||[]).forEach(p=>by[p.id]={id:p.id,pseudo:p.pseudo,tot:0,ex:{}});
+  (rows||[]).forEach(r=>{ const u=by[r.user_id]; if(!u) return; u.tot+=r.count; u.ex[r.exercise]=(u.ex[r.exercise]||0)+r.count; });
+  const list=Object.values(by).sort((a,b)=>b.tot-a.tot||a.pseudo.localeCompare(b.pseudo));
+  $('board').innerHTML=list.map((u,i)=>{ const rk=i>0&&u.tot===list[i-1].tot?'=':(i+1);
+    const det=Object.keys(EXN).filter(k=>u.ex[k]).map(k=>u.ex[k]+' '+EXN[k]).join(' · ')||'pas encore de répétition';
+    return '<li class="'+(u.id===me.id?'me ':'')+(u.tot&&i<3?'med'+(i+1):'')+'"><span class="rk">'+rk+'</span><span><b>'+esc(u.pseudo)+(u.id===me.id?' (toi)':'')+'</b><small>'+det+'</small></span><span class="pts">'+u.tot+'</span></li>'; }).join('');
+  $('bNote').textContent='Total de répétitions '+(period==='semaine'?'depuis lundi':'depuis le 1er du mois')+'.';
+}
+document.querySelectorAll('#boardCard .seg button').forEach(b=>b.addEventListener('click',()=>{ period=b.dataset.p; document.querySelectorAll('#boardCard .seg button').forEach(x=>x.setAttribute('aria-selected',x===b)); loadBoard(); }));
+$('bRefresh').addEventListener('click',()=>{ sendQueue(); loadBoard(); });
+
+let aMode='in';
+function setA(m){ aMode=m; document.querySelectorAll('#auth .seg button').forEach(x=>x.setAttribute('aria-selected',x.dataset.a===m));
+  $('fPseudo').hidden=m!=='up'; $('fPass').hidden=m==='forgot'; $('aGo').textContent=m==='up'?'Créer mon compte':m==='forgot'?'Recevoir le lien':'Se connecter';
+  $('aPass').autocomplete=m==='up'?'new-password':'current-password'; $('aForgot').textContent=m==='forgot'?'Retour à la connexion':'Mot de passe oublié ?'; amsg(''); }
+function amsg(t,ok){ $('aMsg').className=ok?'ok':'err'; $('aMsg').textContent=t||''; }
+document.querySelectorAll('#auth .seg button').forEach(b=>b.addEventListener('click',()=>setA(b.dataset.a)));
+$('aForgot').addEventListener('click',()=>setA(aMode==='forgot'?'in':'forgot'));
+const FR={'Invalid login credentials':'E-mail ou mot de passe incorrect.','Email not confirmed':'Confirme d’abord ton e-mail (lien reçu à l’inscription).','User already registered':'Un compte existe déjà avec cet e-mail : connecte-toi.'};
+function fr(e){ const m=e&&e.message||''; return FR[m]||(/rate limit/i.test(m)?'Trop d’essais, patiente quelques minutes.':/password/i.test(m)?'Mot de passe trop faible (8 caractères minimum).':'Erreur : '+m); }
+$('authForm').addEventListener('submit',async ev=>{
+  ev.preventDefault(); const email=$('aEmail').value.trim(), pass=$('aPass').value, pseudo=$('aPseudo').value.trim();
+  if(!/^\S+@\S+\.\S+$/.test(email)) return amsg('E-mail invalide.');
+  if(aMode==='forgot'){ $('aGo').disabled=true; const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:PAGE_URL}); $('aGo').disabled=false;
+    return error?amsg(fr(error)):amsg('Si un compte existe, un lien de réinitialisation vient d’être envoyé.',true); }
+  if(pass.length<8) return amsg('Mot de passe : 8 caractères minimum.');
+  if(aMode==='up'&&(pseudo.length<2||pseudo.length>20)) return amsg('Pseudo : entre 2 et 20 caractères.');
+  $('aGo').disabled=true;
+  try{
+    if(aMode==='up'){
+      const {data,error}=await sb.auth.signUp({email,password:pass,options:{data:{pseudo},emailRedirectTo:PAGE_URL}});
+      if(error) return amsg(fr(error));
+      if(!data.session) return amsg('Compte créé. Ouvre le lien reçu par e-mail pour l’activer, puis connecte-toi.',true);
+    } else {
+      const {error}=await sb.auth.signInWithPassword({email,password:pass});
+      if(error) return amsg(fr(error));
+    }
+  } finally { $('aGo').disabled=false; }
+});
+$('npGo').addEventListener('click',async()=>{
+  const p=$('npPass').value; if(p.length<8){ $('npMsg').className='err'; $('npMsg').textContent='8 caractères minimum.'; return; }
+  const {error}=await sb.auth.updateUser({password:p});
+  $('npMsg').className=error?'err':'ok'; $('npMsg').textContent=error?fr(error):'Mot de passe changé.';
+  if(!error) setTimeout(()=>{ $('newPass').hidden=true; render(); },1200);
+});
+async function ensureProfile(user){
+  const {data}=await sb.from('profiles').select('pseudo').eq('id',user.id).maybeSingle();
+  if(data) return data.pseudo;
+  const want=(user.user_metadata&&user.user_metadata.pseudo)||'';
+  if(want){ const {error}=await sb.from('profiles').insert({id:user.id,pseudo:want}); if(!error) return want; }
+  return null;
+}
+$('psGo').addEventListener('click',async()=>{
+  const v=$('psIn').value.trim(); if(v.length<2||v.length>20){ $('psMsg').className='err'; $('psMsg').textContent='Entre 2 et 20 caractères.'; return; }
+  const {error}=await sb.from('profiles').insert({id:me.id,pseudo:v});
+  if(error){ $('psMsg').className='err'; $('psMsg').textContent=/duplicate|unique/i.test(error.message)?'Ce pseudo est déjà pris.':fr(error); return; }
+  me.pseudo=v; render();
+});
+$('logout').addEventListener('click',async()=>{ stopCoach(); await sb.auth.signOut(); });
+function render(){
+  const inApp=!!(me&&me.pseudo);
+  $('auth').hidden=!!me; $('pseudoCard').hidden=!(me&&!me.pseudo); $('app').hidden=!inApp||!$('newPass').hidden; $('who').hidden=!me;
+  $('boardCard').hidden=!inApp;
+  if(me){ $('whoName').textContent=me.pseudo||me.email; }
+  if(inApp){ uid=me.id; loadState(); renderCoach(); loadBoard(); sendQueue(); }
+}
+async function onSession(session){
+  if(!session){ me=null; uid='local'; render(); return; }
+  me={id:session.user.id,email:session.user.email,pseudo:null};
+  me.pseudo=await ensureProfile(session.user); render();
+}
+if(SB_URL&&SB_KEY){
+  $('app').hidden=true;
+  loadScript(SB_JS).then(()=>{
+    sb=window.supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+    sb.auth.onAuthStateChange((ev,session)=>{
+      if(ev==='PASSWORD_RECOVERY'){ $('newPass').hidden=false; $('app').hidden=true; $('auth').hidden=true; return; }
+      if(ev==='INITIAL_SESSION'||ev==='SIGNED_IN'||ev==='SIGNED_OUT'){ setTimeout(()=>onSession(session),0); }
+    });
+  }).catch(()=>{ $('app').hidden=false; $('sync').textContent='Comptes indisponibles (pas de réseau) : le compteur marche, sans classement.'; });
+  window.addEventListener('online',sendQueue);
+}
 renderCoach();
 })();
 </script>
