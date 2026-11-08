@@ -214,6 +214,17 @@ ol.board small{display:block;color:var(--muted);font-size:.8rem}
 .topk .fill::after{content:"";position:absolute;inset:0;border-radius:999px;background:linear-gradient(180deg,rgba(255,255,255,.28),rgba(255,255,255,0) 60%)}
 .topk .txt{position:relative;z-index:1;text-shadow:0 1px 0 rgba(255,255,255,.45);display:flex;justify-content:space-between;align-items:center;height:100%;padding:0 12px;font-family:var(--display);font-weight:700;font-size:1rem;letter-spacing:.02em;color:var(--fg);font-variant-numeric:tabular-nums}
 .topk .txt small{font-weight:600;opacity:.8}
+.clubstep{display:grid;justify-items:center;gap:6px;padding:16px 12px;background:var(--sunk);border-radius:14px;text-align:center}
+.clubstep .ico{width:104px;height:104px}
+.clubstep .what{font-family:var(--display);font-weight:700;font-size:1.6rem;line-height:1.1}
+.clubstep .do{font-size:1.05rem;font-weight:600}
+.clubstep .clock{font-family:var(--display);font-weight:700;font-size:3.6rem;line-height:1;font-variant-numeric:tabular-nums}
+.clubstep .clock.rest{color:var(--gold)}
+.clubstep .tip{font-size:.88rem;color:var(--muted);max-width:420px}
+.kg{display:flex;gap:6px;align-items:center;justify-content:center;flex-wrap:wrap}
+.kg input{width:90px}
+ol.steps li.done{opacity:.55}
+ol.steps li.done .dur::after{content:" ✓";color:var(--accent)}
 .needs{display:grid;gap:8px}
 .pbar{position:relative;height:30px;border-radius:999px;background:var(--sunk);box-shadow:inset 0 0 0 1px var(--line);overflow:hidden}
 .pbar .fill{position:absolute;inset:0 auto 0 0;width:0%;border-radius:999px;transition:width .6s ease}
@@ -449,10 +460,11 @@ body.fs-on{overflow:hidden}
   <!-- REVEIL -->
   <section id="p-reveil" hidden>
     <div class="card">
-      <div class="tabs" id="mode" style="grid-template-columns:repeat(3,1fr)">
+      <div class="tabs" id="mode" style="grid-template-columns:repeat(4,1fr)">
         <button aria-selected="true" data-m="reveil">Réveil</button>
         <button aria-selected="false" data-m="etirements">Étirements</button>
         <button aria-selected="false" data-m="coach">Compteur</button>
+        <button aria-selected="false" data-m="club">Club</button>
       </div>
       <h2 id="rTitle">Routine du réveil</h2>
       <p class="muted" style="margin:0" id="rIntro">À faire en pyjama, sans matériel, avant le café. Le minuteur enchaîne tout seul et coche la case du jour à la fin.</p>
@@ -496,6 +508,28 @@ body.fs-on{overflow:hidden}
           <ol class="board" id="board"></ol>
           <p class="note" id="bNote" style="margin:0"></p>
         </div>
+      </div>
+      <div id="club" hidden style="display:grid;gap:12px">
+        <div class="lvl" id="clubTours">
+          <button aria-pressed="true" data-t="2">2 tours · semaines 1-4 (≈ 35 min)</button>
+          <button aria-pressed="false" data-t="3">3 tours · semaine 5+ (≈ 45 min)</button>
+        </div>
+        <div class="clubstep" id="clStep">
+          <div class="label" id="clPos">Prêt</div>
+          <div id="clIco"></div>
+          <div class="what" id="clWhat">Séance au Forest Hill</div>
+          <div class="do" id="clDo">Tapis, machines de musculation, rameur</div>
+          <div class="clock num" id="clClock"></div>
+          <div class="kg" id="clKg" hidden><label for="clKgIn">Charge</label><input type="number" id="clKgIn" inputmode="decimal" step="2.5" min="0" max="300"> <span>kg</span><span class="note" id="clKgLast"></span></div>
+          <div class="tip" id="clTip"></div>
+          <div class="row" style="justify-content:center;margin-top:6px">
+            <button class="btn" id="clMain">Démarrer la séance</button>
+            <button class="btn ghost" id="clSkip" disabled>Passer</button>
+            <button class="btn ghost" id="clStop" disabled>Arrêter</button>
+          </div>
+        </div>
+        <ol class="steps" id="clList"></ol>
+        <p class="note" style="margin:0">Charges : choisis un poids qui permet 12 répétitions propres en gardant 2 ou 3 répétitions « en réserve ». Si c’était facile, ajoute 2,5 à 5 kg la fois suivante. Au premier passage, demande à un coach de régler les machines à ta taille.</p>
       </div>
       <div class="timer" id="tBox">
         <div class="label" id="tPhase">Prêt</div>
@@ -551,18 +585,19 @@ body.fs-on{overflow:hidden}
       </div>
       <div class="card">
         <div class="label">Mercredi · Forest Hill Marnes-la-Coquette</div>
-        <h3>Séance B · cardio + machines</h3>
-        <ul class="clean">
-          <li>10 min de vélo ou d'elliptique, en pouvant parler</li>
-          <li>2 tours, 12 répétitions, charge légère :</li>
-          <li>Presse à cuisses</li>
-          <li>Tirage poitrine</li>
-          <li>Développé couché à la machine</li>
-          <li>Leg curl</li>
-          <li>3 min de rameur entre les deux tours</li>
-          <li>5 min d'étirements</li>
+        <h3>Séance B · tapis, machines, rameur</h3>
+        <ul class="clean ex">
+          <li data-ico="tapis">6 min de tapis : marche rapide, inclinaison 3 puis 5 %</li>
+          <li>2 tours (3 à partir de la semaine 5), 12 répétitions, 1 min de repos :</li>
+          <li data-ico="presse">Presse à cuisses</li>
+          <li data-ico="tirage">Tirage vertical</li>
+          <li data-ico="developpe">Développé poitrine à la machine</li>
+          <li data-ico="rowing">Rowing assis</li>
+          <li data-ico="legcurl">Leg curl</li>
+          <li data-ico="rameur">5 min de rameur : 2 min tranquille, puis 3 × 30 s soutenu / 30 s facile</li>
+          <li data-ico="tapis">3 min de marche lente et 2 min d’étirements</li>
         </ul>
-        <p class="note" style="margin:0">Au premier passage, demandez à un coach de régler les machines à votre taille.</p>
+        <button class="btn" id="goClub" style="justify-self:start">Lancer la séance guidée</button>
       </div>
     </div>
     <div class="card">
@@ -634,6 +669,12 @@ const ICONS={
   pecto:{h:[30,10],b:['30,15 30,34','30,19 44,19 44,8','30,19 24,30','30,34 36,58','30,34 24,58'],p:['47,4 47,58','12,58 54,58']},
   enfant:{h:[45,53],b:['6,57 24,57','24,57 12,44','12,44 26,42 40,50','40,52 60,57'],p:['4,58 62,58']},
   pont:{h:[8,51],b:['13,54 30,38','30,38 44,36 46,57','14,56 30,57'],p:['2,58 62,58']},
+  rameur:{h:[22,22],b:['22,27 26,42','26,42 40,38 48,48','23,31 42,34'],p:['4,52 60,52','46,30 52,52','20,46 32,46']},
+  presse:{h:[12,30],b:['15,34 26,46','26,46 36,34 46,40','17,38 28,38'],p:['6,52 34,52','8,26 20,52','50,22 54,52']},
+  tirage:{h:[32,28],b:['32,33 32,46','32,46 44,46 44,58','32,36 22,22','32,36 42,22'],p:['14,20 50,20','32,4 32,20','22,46 46,46']},
+  developpe:{h:[20,18],b:['20,23 20,42','20,42 34,42 34,58','20,28 42,28'],p:['46,16 46,40','12,8 12,48','12,48 28,48']},
+  rowing:{h:[18,22],b:['18,27 20,42','20,42 40,44','19,31 36,33'],p:['46,22 46,48','8,48 52,48']},
+  legcurl:{h:[10,38],b:['14,41 38,43','38,43 46,28'],p:['4,48 52,48','44,24 52,34']},
   tapis:{h:[30,10],b:['30,15 28,32','28,32 36,50','28,32 22,51','30,19 38,28','30,19 23,28'],p:['6,52 50,49','6,57 50,54','6,52 6,57','50,49 54,24 46,26']},
   eau:{o:['<path d="M32 8 C22 24 16 32 16 40 a16 16 0 0 0 32 0 C48 32 42 24 32 8 Z"/>','<path d="M24 42 a8 8 0 0 0 8 8" opacity=".6"/>']},
   assiette:{o:['<circle cx="34" cy="34" r="18"/>','<circle cx="34" cy="34" r="10" opacity=".55"/>','<path d="M8 14 v14 M5 14 v8 a3 3 0 0 0 6 0 v-8 M8 28 v26"/>','<path d="M58 14 c-5 4 -5 14 0 18 v22"/>']},
@@ -687,7 +728,7 @@ function lsGet(){try{const s=localStorage.getItem(lsKey());return s?JSON.parse(s
 function lsSet(){try{localStorage.setItem(lsKey(),JSON.stringify(state))}catch(e){}}
 function freshState(){ return {profil:null, meals:{}, days:{}, weights:[], level:0, reps:{}}; }
 function loadState(){ state=freshState(); merge(lsGet()); }
-function merge(s){ if(s&&typeof s==='object'){ state={profil:(s.profil&&typeof s.profil==='object')?s.profil:null,meals:(s.meals&&typeof s.meals==='object')?s.meals:{},days:s.days||{},weights:Array.isArray(s.weights)?s.weights:[],level:+s.level||0,reps:(s.reps&&typeof s.reps==='object')?s.reps:{}}; } }
+function merge(s){ if(s&&typeof s==='object'){ state={charges:(s.charges&&typeof s.charges==='object')?s.charges:{},clubTours:+s.clubTours||2,profil:(s.profil&&typeof s.profil==='object')?s.profil:null,meals:(s.meals&&typeof s.meals==='object')?s.meals:{},days:s.days||{},weights:Array.isArray(s.weights)?s.weights:[],level:+s.level||0,reps:(s.reps&&typeof s.reps==='object')?s.reps:{}}; } }
 function save(){ lsSet(); clearTimeout(saveT); saveT=setTimeout(()=>{ if(remoteSave) remoteSave(); },800); }
 merge(lsGet());
 
@@ -707,7 +748,7 @@ function goFor(id,wd){
   if(id==='reveil') return {txt:'Lancer',aria:'Lancer la routine du réveil',run:open('reveil',true)};
   if(id==='etirements') return {txt:'Lancer',aria:'Lancer les étirements',run:open('etirements',true)};
   if(id==='seance'){
-    if(PLAN[wd].t.indexOf('Forest Hill')>=0) return {txt:'Voir',aria:'Voir la séance au club',run:()=>{ show('semaine'); window.scrollTo({top:0,behavior:'smooth'}); }};
+    if(PLAN[wd].t.indexOf('Forest Hill')>=0) return {txt:'Lancer',aria:'Lancer la séance guidée au club',run:open('club')};
     return {txt:'Lancer',aria:'Ouvrir le compteur de répétitions',run:open('coach')};
   }
   return null;
@@ -914,6 +955,7 @@ EX_STRETCH.forEach((e,i)=>e.ico=['respiration','genoux','ischios','fessier','pso
 const MODES={
   reveil:{title:'Routine du réveil',intro:'À faire en pyjama, sans matériel, avant le café. Le minuteur enchaîne tout seul et coche la case du jour à la fin.',habit:'reveil',pts:2},
   etirements:{title:'Étirements du soir',intro:'10 minutes au calme, sur un tapis ou un plaid. Respirer lentement, jamais jusqu’à la douleur. Un signal sonore indique quand changer de côté.',habit:'etirements',pts:1},
+  club:{title:'Séance au Forest Hill',intro:'Tapis, machines de musculation et rameur, guidés pas à pas : minuteur pour le cardio, séries et repos pour les machines. La charge de chaque machine est gardée pour la prochaine fois.'},
   coach:{title:'Compteur de répétitions',intro:'En mode guidé, la voix donne le rythme et compte pour vous. Avec la caméra, posez le téléphone à 2-3 m : le squelette s’affiche et seules les répétitions complètes sont comptées.'}
 };
 let mode='reveil', lvl=state.level||0;
@@ -933,14 +975,95 @@ function renderSteps(cur){
 }
 const $=id=>document.getElementById(id);
 function setMode(m){
-  if(running) return; exitFs(); if(m!=='coach') stopCoach(); if(typeof camOff==='function'&&tCamOn) camOff(); mode=m;
+  if(running) return; exitFs(); if(m!=='coach') stopCoach(); if(m!=='club'&&typeof clubStop==='function') clubStop(true); if(typeof camOff==='function'&&tCamOn) camOff(); mode=m;
   document.querySelectorAll('#mode button').forEach(x=>x.setAttribute('aria-selected',x.dataset.m===m));
   $('rTitle').textContent=MODES[m].title; $('rIntro').textContent=MODES[m].intro;
-  $('lvl').hidden=m!=='reveil'; $('tBox').hidden=$('steps').hidden=m==='coach'; $('coach').hidden=m!=='coach';
+  $('lvl').hidden=m!=='reveil'; $('tBox').hidden=$('steps').hidden=(m==='coach'||m==='club'); $('coach').hidden=m!=='coach'; $('club').hidden=m!=='club';
   if(m==='coach'){ renderCoach(); return; }
+  if(m==='club'){ clubRender(); return; }
   resetTimer();
 }
 document.querySelectorAll('#mode button').forEach(b=>b.addEventListener('click',()=>setMode(b.dataset.m)));
+/* ---------- séance guidée au Forest Hill ---------- */
+const MACHINES=[
+  {id:'presse',n:'Presse à cuisses',ico:'presse',tip:'Pieds largeur de hanches, genoux dans l’axe des pieds. Ne verrouille pas les genoux en haut.'},
+  {id:'tirage',n:'Tirage vertical',ico:'tirage',tip:'Tire la barre vers le haut de la poitrine, coudes vers le bas, sans balancer le buste.'},
+  {id:'developpe',n:'Développé poitrine',ico:'developpe',tip:'Poignées à hauteur de poitrine. Pousse en soufflant, reviens lentement.'},
+  {id:'rowing',n:'Rowing assis',ico:'rowing',tip:'Dos droit, tire vers le nombril en serrant les omoplates.'},
+  {id:'legcurl',n:'Leg curl',ico:'legcurl',tip:'Mouvement lent et contrôlé, hanches collées au banc.'}
+];
+function clubPlan(tours){
+  const st=[{k:'cardio',n:'Tapis · échauffement',ico:'tapis',tip:'Ne tiens pas les poignées : bras qui balancent, buste droit.',ph:[{t:180,d:'Marche rapide · 5,5 km/h · inclinaison 3 %'},{t:180,d:'Marche rapide · 6 km/h · inclinaison 5 %'}]}];
+  for(let r=1;r<=tours;r++) MACHINES.forEach(m=>st.push({k:'set',m,n:m.n,ico:m.ico,tip:m.tip,tour:r,tours,reps:12,rest:60}));
+  st.push({k:'cardio',n:'Rameur',ico:'rameur',tip:'Pousse d’abord avec les jambes, puis tire la poignée vers le nombril. Dos droit, retour lent.',
+    ph:[{t:120,d:'Tranquille · 20 à 22 coups par minute'},{t:30,d:'Soutenu · 24 à 26 coups'},{t:30,d:'Facile · récupère'},{t:30,d:'Soutenu · 24 à 26 coups'},{t:30,d:'Facile · récupère'},{t:30,d:'Soutenu · 24 à 26 coups'},{t:30,d:'Facile · récupère'}]});
+  st.push({k:'cardio',n:'Tapis · retour au calme',ico:'tapis',tip:'Respire lentement, laisse redescendre le cœur.',ph:[{t:180,d:'Marche lente · 4,5 km/h · à plat'}]});
+  st.push({k:'cardio',n:'Étirements',ico:'enfant',tip:'Sans à-coups, jamais jusqu’à la douleur.',ph:[{t:40,d:'Quadriceps · 20 s par jambe'},{t:40,d:'Ischio-jambiers · 20 s par jambe'},{t:40,d:'Pectoraux · dans un encadrement'}]});
+  return st;
+}
+let CL={on:false,plan:[],i:0,ph:0,left:0,rest:false,paused:false,iv:null,wake:null};
+const clTours=()=>+(state.clubTours||2);
+function clubRender(){
+  if(CL.on) return;
+  document.querySelectorAll('#clubTours button').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.t===clTours()));
+  CL.plan=clubPlan(clTours()); clubList(-1);
+  $('clPos').textContent='Prêt'; $('clIco').innerHTML=icon('tapis','big'); $('clWhat').textContent='Séance au Forest Hill';
+  $('clDo').textContent='Tapis, '+MACHINES.length+' machines × '+clTours()+' tours, rameur'; $('clClock').textContent=''; $('clKg').hidden=true; $('clTip').textContent='';
+  $('clMain').textContent='Démarrer la séance'; $('clSkip').disabled=true; $('clStop').disabled=true;
+}
+function clubList(cur){
+  $('clList').innerHTML=CL.plan.map((s,i)=>{ const dur=s.k==='set'?'Tour '+s.tour+' · 12 rép.':fmt(s.ph.reduce((a,p)=>a+p.t,0));
+    return '<li class="'+(i===cur?'cur':i<cur?'done':'')+'">'+icon(s.ico)+'<span>'+s.n+'<small>'+(s.k==='set'?((state.charges&&state.charges[s.m.id])?'dernière fois '+nf(state.charges[s.m.id].kg)+' kg':'charge à trouver'):s.ph[0].d)+'</small></span><span class="dur">'+dur+'</span></li>'; }).join('');
+  const li=$('clList').children[cur]; if(li&&CL.on) li.scrollIntoView({block:'nearest',behavior:'smooth'});
+}
+document.querySelectorAll('#clubTours button').forEach(b=>b.addEventListener('click',()=>{ if(CL.on) return; state.clubTours=+b.dataset.t; save(); clubRender(); }));
+function clubShow(){
+  const s=CL.plan[CL.i]; $('clPos').textContent='Étape '+(CL.i+1)+' / '+CL.plan.length+(s.k==='set'?' · tour '+s.tour+'/'+s.tours:'');
+  $('clIco').innerHTML=icon(s.ico,'big'+(CL.rest?' faint':'')); $('clWhat').textContent=s.n; $('clTip').textContent=s.tip||''; clubList(CL.i);
+  if(s.k==='cardio'){ $('clKg').hidden=true; $('clDo').textContent=s.ph[CL.ph].d+(s.ph.length>1?' ('+(CL.ph+1)+'/'+s.ph.length+')':''); $('clClock').textContent=fmt(CL.left); $('clClock').classList.remove('rest'); $('clMain').textContent=CL.paused?'Reprendre':'Pause'; }
+  else if(CL.rest){ const nx=CL.plan[CL.i+1]; $('clDo').textContent='Repos · ensuite : '+(nx?nx.n:'fin'); $('clClock').textContent=fmt(CL.left); $('clClock').classList.add('rest'); $('clKg').hidden=true; $('clMain').textContent='Passer le repos'; }
+  else { $('clDo').textContent='12 répétitions · lent et contrôlé'; $('clClock').textContent=''; $('clKg').hidden=false;
+    const last=state.charges&&state.charges[s.m.id]; $('clKgIn').value=last?last.kg:''; $('clKgLast').textContent=last?'dernière fois : '+nf(last.kg)+' kg':'règle une charge légère'; $('clMain').textContent='Série faite ✓'; }
+}
+function clubGo(i){
+  CL.i=i; CL.ph=0; CL.rest=false; CL.paused=false;
+  if(i>=CL.plan.length){ clubFinish(); return; }
+  const s=CL.plan[i]; if(s.k==='cardio') CL.left=s.ph[0].t;
+  beep(880,.25); speak(s.n+(s.k==='set'?', 12 répétitions':', '+s.ph[0].d),true); clubShow();
+}
+function clubTick(){
+  if(!CL.on||CL.paused) return; const s=CL.plan[CL.i];
+  if(s.k==='set'&&!CL.rest) return;
+  CL.left--; if(CL.left<=3&&CL.left>0) beep(660,.08);
+  if(CL.left>0){ $('clClock').textContent=fmt(CL.left); return; }
+  if(CL.rest){ clubGo(CL.i+1); return; }
+  if(CL.ph<s.ph.length-1){ CL.ph++; CL.left=s.ph[CL.ph].t; beep(990,.3); speak(s.ph[CL.ph].d,true); clubShow(); return; }
+  clubGo(CL.i+1);
+}
+async function clubStart(){
+  ensureAudio(); CL.on=true; CL.plan=clubPlan(clTours());
+  $('clSkip').disabled=false; $('clStop').disabled=false;
+  try{ if(navigator.wakeLock) CL.wake=await navigator.wakeLock.request('screen'); }catch(e){}
+  clearInterval(CL.iv); CL.iv=setInterval(clubTick,1000); clubGo(0);
+}
+function clubStop(silent){ if(!CL.on&&!silent) return; CL.on=false; clearInterval(CL.iv); CL.iv=null; try{ CL.wake&&CL.wake.release(); }catch(e){} CL.wake=null; if(!silent||mode==='club') clubRender(); }
+function clubFinish(){
+  clubStop(true); const d=state.days[TODAY]||(state.days[TODAY]={}); d.seance=1; save(); renderAll();
+  $('clPos').textContent='Terminé'; $('clIco').innerHTML=''; $('clWhat').textContent='Bravo, séance terminée !'; $('clDo').textContent='+3 points · charges enregistrées pour la prochaine fois'; $('clClock').textContent='✓'; $('clKg').hidden=true; $('clTip').textContent='';
+  $('clMain').textContent='Recommencer'; clubList(CL.plan.length); if(sndOn) chime(true); speak('Bravo, séance terminée !',true);
+}
+$('clMain').addEventListener('click',()=>{
+  if(!CL.on){ clubStart(); return; }
+  const s=CL.plan[CL.i];
+  if(s.k==='cardio'){ CL.paused=!CL.paused; clubShow(); return; }
+  if(CL.rest){ clubGo(CL.i+1); return; }
+  const kg=parseFloat(String($('clKgIn').value).replace(',','.'));
+  if(kg>=0&&kg<=300){ state.charges=state.charges||{}; state.charges[s.m.id]={kg:Math.round(kg*10)/10,d:TODAY}; save(); }
+  if(sndOn) chime(); CL.rest=true; CL.left=s.rest; speak('Bien. Une minute de repos.',true); clubShow();
+});
+$('clSkip').addEventListener('click',()=>{ if(CL.on) clubGo(CL.i+1); });
+$('clStop').addEventListener('click',()=>clubStop());
+document.getElementById('goClub').addEventListener('click',()=>{ show('reveil'); setMode('club'); window.scrollTo({top:0,behavior:'smooth'}); });
 document.querySelectorAll('#lvl button').forEach(b=>b.addEventListener('click',()=>{ if(running) return; lvl=+b.dataset.l; state.level=lvl; save(); document.querySelectorAll('#lvl button').forEach(x=>x.setAttribute('aria-pressed',x===b)); renderSteps(-1); }));
 document.querySelectorAll('#lvl button').forEach(x=>x.setAttribute('aria-pressed',+x.dataset.l===lvl));
 let running=false, paused=false, S=[], idx=0, left=0, tick=null, actx=null, wake=null;
