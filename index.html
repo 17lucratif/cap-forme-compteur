@@ -206,6 +206,14 @@ ol.board small{display:block;color:var(--muted);font-size:.8rem}
 .kbar{position:relative;height:14px;background:var(--sunk);border-radius:999px;overflow:hidden}
 .kbar i{position:absolute;inset:0 auto 0 0;background:var(--accent);border-radius:999px;transition:width .4s}
 .kbar.over i{background:var(--warn)}
+.needs{display:grid;gap:10px}
+.need{display:grid;grid-template-columns:86px 1fr auto;gap:10px;align-items:center}
+.need .nl{font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;font-weight:700;color:var(--muted)}
+.need .nv{font-family:var(--display);font-weight:600;font-size:1.05rem;font-variant-numeric:tabular-nums;white-space:nowrap}
+.need .nv small{color:var(--muted);font-weight:500}
+.need .kbar{height:12px}
+.need.p .kbar i{background:#C0569A}.need.g .kbar i{background:var(--gold)}.need.l .kbar i{background:#3E86C6}
+.need .kbar.over i{background:var(--warn)!important}
 .meals{list-style:none;margin:0;padding:0;display:grid;gap:6px}
 .meals li{display:grid;grid-template-columns:44px 1fr auto auto;gap:8px;align-items:center;padding:8px 10px;border-radius:10px;background:var(--sunk);font-size:.92rem}
 .meals .h{font-family:var(--display);font-weight:600;color:var(--muted)}
@@ -358,21 +366,13 @@ body.fs-on{overflow:hidden}
       <div class="ticks"><span>Lundi</span><span id="weekHint">Objectif réaliste : Argent</span><span>Dimanche</span></div>
     </div>
 
-    <div class="card">
-      <div class="row" style="justify-content:space-between">
-        <h2 id="dayTitle">Aujourd'hui</h2>
-        <span class="num" id="dayPts" style="font-size:1.3rem;font-weight:700">0 pt</span>
-      </div>
-      <div class="habits" id="habits"></div>
-    </div>
-
     <div class="card" id="kcalCard">
       <div class="row" style="justify-content:space-between">
-        <h2>Calories du jour</h2>
+        <h2>Besoins du jour</h2>
         <span class="num" id="kcalTot" style="font-size:1.3rem;font-weight:700"></span>
       </div>
       <div id="kcalBody"></div>
-      <div class="kbar" id="kcalBar"><i style="width:0%"></i></div>
+      <div class="needs" id="needs"></div>
       <ul class="meals" id="meals"></ul>
       <div class="row">
         <button class="btn" id="kPhoto" hidden>📷 Photo avec Claude</button>
@@ -384,6 +384,15 @@ body.fs-on{overflow:hidden}
         <button class="btn" type="submit">OK</button>
       </form>
     </div>
+
+    <div class="card">
+      <div class="row" style="justify-content:space-between">
+        <h2 id="dayTitle">Aujourd'hui</h2>
+        <span class="num" id="dayPts" style="font-size:1.3rem;font-weight:700">0 pt</span>
+      </div>
+      <div class="habits" id="habits"></div>
+    </div>
+
   </section>
 
   <!-- POIDS -->
@@ -783,7 +792,9 @@ function besoin(){
   const tdee=bmr*(+p.act||1.375);
   const plancher=p.sexe==='f'?1300:1600;
   const cible=Math.max(plancher,Math.round((tdee-500)/50)*50);
-  return {bmr:Math.round(bmr),tdee:Math.round(tdee/10)*10,cible,age};
+  // répartition : protéines 1,6 g/kg, lipides 30 % des calories, glucides le reste
+  const prot=Math.round(1.6*kg/5)*5, lip=Math.round(cible*0.30/9/5)*5, glu=Math.max(0,Math.round((cible-prot*4-lip*9)/4/5)*5);
+  return {bmr:Math.round(bmr),tdee:Math.round(tdee/10)*10,cible,age,prot,lip,glu};
 }
 function renderPoids(){
   const ws=[...state.weights].sort((a,b)=>a.d<b.d?-1:1), st=$('wStats'), p=state.profil;
@@ -816,7 +827,10 @@ function todayMeals(){ return (state.meals&&state.meals[TODAY])||[]; }
 function renderKcal(){
   const ms=todayMeals(), tot=ms.reduce((a,m)=>a+(+m.kcal||0),0), b=besoin();
   $('kcalTot').textContent=tot+(b?' / '+b.cible:'')+' kcal';
-  const bar=$('kcalBar'); bar.querySelector('i').style.width=b?Math.min(100,tot/b.cible*100)+'%':'0%'; bar.classList.toggle('over',!!b&&tot>b.cible); bar.hidden=!b;
+  const sum=f=>ms.reduce((a,m)=>a+(+m[f]||0),0), P=sum('p'), G=sum('g'), Li=sum('l');
+  const row=(cls,lab,v,t,u)=>'<div class="need '+cls+'"><span class="nl">'+lab+'</span><div class="kbar'+(v>t*1.05?' over':'')+'"><i style="width:'+Math.min(100,t?v/t*100:0)+'%"></i></div><span class="nv">'+v+' <small>/ '+t+' '+u+'</small></span></div>';
+  $('needs').innerHTML=b?row('k','Calories',tot,b.cible,'kcal')+row('p','Protéines',P,b.prot,'g')+row('g','Glucides',G,b.glu,'g')+row('l','Lipides',Li,b.lip,'g')
+    +(ms.some(m=>m.p==null)?'<p class="note" style="margin:0">Les repas ajoutés à la main ne comptent que dans les calories.</p>':''):'';
   $('kcalBody').innerHTML=b?'<p class="note" style="margin:0">'+(tot<=b.cible?'Il reste environ <b>'+(b.cible-tot)+' kcal</b> pour aujourd’hui.':'Objectif dépassé de '+(tot-b.cible)+' kcal : pas grave, on équilibre sur la semaine.')+'</p>'
     :'<p class="note" style="margin:0">Complète ton profil pour calculer ton besoin journalier. <button class="link" id="goProfil">Compléter</button></p>';
   const gp=$('goProfil'); if(gp) gp.addEventListener('click',()=>{ show('poids'); setTimeout(()=>$('profilCard').scrollIntoView({behavior:'smooth'}),50); });
