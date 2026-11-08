@@ -225,6 +225,19 @@ ol.board small{display:block;color:var(--muted);font-size:.8rem}
 .kg input{width:90px}
 ol.steps li.done{opacity:.55}
 ol.steps li.done .dur::after{content:" ✓";color:var(--accent)}
+.bticks{position:relative;display:flex;justify-content:space-between;font-size:.75rem;color:var(--muted);height:1.1em}
+#bMarkTxt{position:absolute;top:0;transform:translateX(-100%);white-space:nowrap;padding-right:4px}
+.weekline{display:grid;gap:6px;padding-top:12px;border-top:1px solid var(--line)}
+.weekline .bar{height:8px}
+.kcrit{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;background:var(--sunk);font-size:.92rem}
+.kcrit b{font-family:var(--display);font-size:1.05rem}
+.kcrit .st{margin-left:auto;font-family:var(--display);font-weight:700;white-space:nowrap}
+.kcrit.ok{background:var(--accent-soft)}.kcrit.ok .st{color:var(--accent)}
+.kcrit.wait .st{color:var(--muted)}.kcrit.bad .st{color:var(--warn)}
+.pbar .mark{position:absolute;top:0;bottom:0;width:3px;margin-left:-1px;background:var(--fg);opacity:.6;z-index:2}
+.pbar.body .fill{background:linear-gradient(90deg,#2C8A5E,#3FB27A)}
+.pbar.body.mid .fill{background:linear-gradient(90deg,#3FB27A,#D9A62E)}
+.pbar.body.over .fill{background:linear-gradient(90deg,#E07B2E,#C4453A)}
 .needs{display:grid;gap:8px}
 .pbar{position:relative;height:30px;border-radius:999px;background:var(--sunk);box-shadow:inset 0 0 0 1px var(--line);overflow:hidden}
 .pbar .fill{position:absolute;inset:0 auto 0 0;width:0%;border-radius:999px;transition:width .6s ease}
@@ -375,20 +388,35 @@ body.fs-on{overflow:hidden}
   <section id="p-jour">
     <div class="week" id="weekStrip"></div>
 
-    <div class="card">
+    <div class="card" id="dayChal">
       <div class="score">
         <div>
-          <div class="label">Challenge de la semaine</div>
-          <div class="big" id="weekPts">0<span> / 45 pts</span></div>
+          <div class="label" id="dLabel">Challenge du jour</div>
+          <div class="big" id="dPts">0<span> / 13 pts</span></div>
         </div>
-        <div class="row" id="medals">
-          <span class="medal" data-m="25">Bronze 25</span>
-          <span class="medal" data-m="35">Argent 35</span>
-          <span class="medal" data-m="45">Or 45</span>
-        </div>
+        <span class="medal" id="dBadge"></span>
       </div>
-      <div class="bar"><i id="weekBar" style="width:0%"></i></div>
-      <div class="ticks"><span>Lundi</span><span id="weekHint">Objectif réaliste : Argent</span><span>Dimanche</span></div>
+      <div class="pbar k" id="dBar"><span class="fill"></span><span class="txt"><span id="dBarT">Journée</span><small id="dBarP">0 %</small></span></div>
+      <div class="kcrit" id="dKcal"></div>
+      <div class="weekline">
+        <div class="row" style="justify-content:space-between">
+          <span><span class="label">Semaine</span> <b class="num" id="weekPts" style="font-size:1.2rem">0<span> / 45 pts</span></b></span>
+          <span class="row" id="medals" style="gap:6px">
+            <span class="medal" data-m="25">Bronze 25</span>
+            <span class="medal" data-m="35">Argent 35</span>
+            <span class="medal" data-m="45">Or 45</span>
+          </span>
+        </div>
+        <div class="bar"><i id="weekBar" style="width:0%"></i></div>
+        <div class="ticks"><span>Lundi</span><span id="weekHint">Objectif réaliste : Argent</span><span>Dimanche</span></div>
+      </div>
+    </div>
+
+    <div class="card" id="bodyCard" hidden>
+      <div class="row" style="justify-content:space-between"><h2>Kcal mangées / besoin du corps</h2></div>
+      <div class="pbar body" id="bBar"><span class="fill"></span><span class="mark" id="bMark" title="Objectif"></span><span class="txt"><span id="bT"></span><small id="bP"></small></span></div>
+      <div class="bticks"><span>0</span><span id="bMarkTxt"></span><span id="bMax"></span></div>
+      <p class="note" id="bNote" style="margin:0"></p>
     </div>
 
     <div class="card" id="kcalCard">
@@ -740,7 +768,37 @@ const today=new Date(); today.setHours(12,0,0,0);
 const TODAY=key(today);
 let sel=new Date(today);
 function monday(d){const m=new Date(d);const wd=(m.getDay()+6)%7;m.setDate(m.getDate()-wd);return m}
-function dayPts(k){const e=state.days[k]||{};return HABITS.reduce((s,h)=>s+(e[h.id]?h.pts:0),0)}
+const KCAL_PTS=2, DAY_MAX=HABITS.reduce((a,h)=>a+h.pts,0)+KCAL_PTS;
+// critère calories : entre 80 et 105 % de l'objectif (récompense le fait de bien manger, pas de trop restreindre)
+function kcalDay(k){ const ms=(state.meals&&state.meals[k])||[]; const b=besoin(); const t=ms.reduce((a,m)=>a+(+m.kcal||0),0);
+  if(!b) return {b:null,t,ok:false}; return {b,t,ok:ms.length>0&&t>=b.cible*0.8&&t<=b.cible*1.05}; }
+function dayPts(k){const e=state.days[k]||{};return HABITS.reduce((s,h)=>s+(e[h.id]?h.pts:0),0)+(kcalDay(k).ok?KCAL_PTS:0)}
+function renderDay(){
+  const k=key(sel), p=dayPts(k), pc=Math.round(p/DAY_MAX*100), isT=k===TODAY;
+  $('dLabel').textContent=isT?'Challenge du jour':'Challenge · '+DLONG[sel.getDay()]+' '+sel.getDate();
+  $('dPts').innerHTML=p+'<span> / '+DAY_MAX+' pts</span>';
+  const bar=$('dBar'); bar.querySelector('.fill').style.width=Math.min(100,pc)+'%'; bar.classList.toggle('mid',pc>=40&&pc<75); bar.classList.toggle('high',false);
+  $('dBarT').textContent=pc>=75?'Super journée':pc>=40?'Bien parti':'C’est parti'; $('dBarP').textContent=pc+' %';
+  $('dBadge').textContent=p>=10?'Journée en or':p>=7?'Journée réussie':''; $('dBadge').classList.toggle('on',p>=7); $('dBadge').hidden=p<7;
+  const kd=kcalDay(k), c=$('dKcal');
+  if(!kd.b){ c.className='kcrit wait'; c.innerHTML='<span>🍽️ Calories</span><span class="st">profil à compléter</span>'; }
+  else { const lo=Math.round(kd.b.cible*0.8/10)*10, hi=Math.round(kd.b.cible*1.05/10)*10;
+    let st, cls; if(kd.ok){ st='✓ +'+KCAL_PTS+' pts'; cls='ok'; } else if(kd.t>hi){ st='au-dessus'; cls='bad'; } else { st=isT?'reste '+Math.max(0,lo-kd.t)+' min.':'pas atteint'; cls=isT?'wait':'bad'; }
+    c.className='kcrit '+cls; c.innerHTML='<span>🍽️ <b>'+kd.t+'</b> kcal · cible '+lo+'–'+hi+'</span><span class="st">'+st+'</span>'; }
+  renderBody();
+}
+function renderBody(){
+  const b=besoin(), card=$('bodyCard'); if(!b){ card.hidden=true; return; } card.hidden=false;
+  const t=kcalDay(key(sel)).t, max=b.tdee, pc=Math.round(t/max*100);
+  const bar=$('bBar'); bar.querySelector('.fill').style.width=Math.min(100,pc)+'%';
+  bar.classList.toggle('mid',t>b.cible&&t<=max); bar.classList.toggle('over',t>max);
+  $('bMark').style.left=(b.cible/max*100)+'%'; $('bMarkTxt').style.left=(b.cible/max*100)+'%'; $('bMarkTxt').textContent='objectif '+b.cible+' ▴'; $('bMax').textContent=max;
+  $('bT').textContent=t+' / '+max+' kcal'; $('bP').textContent=pc+' %';
+  const diff=max-t;
+  $('bNote').innerHTML='Ton corps dépense environ <b>'+max+' kcal</b> par jour (métabolisme de base '+b.bmr+' kcal + activité). '+
+    (diff>=0?'Écart du jour : <b>−'+diff+' kcal</b>'+(t?'':' (aucun repas noté)')+'.':'Tu as mangé <b>'+(-diff)+' kcal</b> de plus que ce que ton corps dépense.')+
+    ' Viser environ −500 kcal par jour fait perdre à peu près 0,5 kg par semaine.';
+}
 
 /* ---------- tabs ---------- */
 const tabs=[...document.querySelectorAll('nav .tabs button')];
@@ -896,12 +954,13 @@ function renderKcal(){
     :'<p class="note" style="margin:0">'+(state.profil&&state.profil.taille?'Il manque ton poids pour calculer ton besoin journalier.':'Complète ton profil pour calculer ton besoin journalier.')+' <button class="link" id="goProfil">'+(state.profil&&state.profil.taille?'Indiquer mon poids':'Compléter')+'</button></p>';
   const gp=$('goProfil'); if(gp) gp.addEventListener('click',()=>{ show('poids'); setTimeout(()=>{ $('profilCard').scrollIntoView({behavior:'smooth'}); const f=state.profil&&state.profil.taille?$('pPoids'):$('pNaiss'); f&&f.focus({preventScroll:true}); },50); });
   $('meals').innerHTML=ms.map((m,i)=>'<li><span class="h">'+esc(m.t||'')+'</span><span>'+esc(m.nom||'Repas')+(m.p!=null?'<small>P '+m.p+' g · G '+m.g+' g · L '+m.l+' g</small>':'')+'</span><span class="k">'+(+m.kcal||0)+'</span><button class="x" data-i="'+i+'" aria-label="Retirer">✕</button></li>').join('');
-  $('meals').querySelectorAll('button[data-i]').forEach(x=>x.addEventListener('click',()=>{ state.meals[TODAY].splice(+x.dataset.i,1); if(!state.meals[TODAY].length) delete state.meals[TODAY]; save(); renderKcal(); }));
+  $('meals').querySelectorAll('button[data-i]').forEach(x=>x.addEventListener('click',()=>{ state.meals[TODAY].splice(+x.dataset.i,1); if(!state.meals[TODAY].length) delete state.meals[TODAY]; save(); renderAll(); }));
   const own=!!(me&&me.id===OWNER); $('kPhoto').hidden=!own; $('hdrPhoto').hidden=!own;
   // propriétaire : carte en haut de Jour ; autres comptes : en bas, après les habitudes
   { const card=$('kcalCard'), sec=$('p-jour'), habits=$('dayTitle').closest('.card');
-    if(own){ if(card.nextElementSibling!==habits) sec.insertBefore(card,habits); }
-    else if(sec.lastElementChild!==card) sec.appendChild(card); }
+    const body=$('bodyCard');
+    if(own){ sec.insertBefore(body,habits); sec.insertBefore(card,habits); }
+    else { sec.appendChild(body); sec.appendChild(card); } }
   const tk=$('topK'); tk.hidden=!own||!b;
   if(own&&b){ const pc=Math.round(tot/b.cible*100); $('topKf').style.width=Math.min(100,pc)+'%';
     tk.classList.toggle('mid',pc>=60&&pc<90); tk.classList.toggle('high',pc>=90&&pc<=100); tk.classList.toggle('over',pc>100);
@@ -909,7 +968,7 @@ function renderKcal(){
     tk.setAttribute('aria-valuemax',b.cible); tk.setAttribute('aria-valuenow',tot); tk.title=(tot<=b.cible?'Reste '+(b.cible-tot):'Dépassé de '+(tot-b.cible))+' kcal'; }
 }
 function nowHM(){ const d=new Date(); return pad(d.getHours())+':'+pad(d.getMinutes()); }
-function addMeal(m){ state.meals=state.meals||{}; (state.meals[TODAY]=state.meals[TODAY]||[]).push(Object.assign({t:nowHM()},m)); save(); renderKcal(); }
+function addMeal(m){ state.meals=state.meals||{}; (state.meals[TODAY]=state.meals[TODAY]||[]).push(Object.assign({t:nowHM()},m)); save(); renderAll(); }
 document.getElementById('kAdd').addEventListener('click',()=>{ $('kForm').hidden=!$('kForm').hidden; if(!$('kForm').hidden) $('kNom').focus(); });
 document.getElementById('kForm').addEventListener('submit',ev=>{ ev.preventDefault(); const v=Math.round(+$('kVal').value); if(!(v>=10&&v<=4000)){ $('kVal').focus(); return; } addMeal({nom:$('kNom').value.trim()||'Repas',kcal:v,src:'manuel'}); $('kNom').value=''; $('kVal').value=''; $('kForm').hidden=true; });
 document.getElementById('wSave').addEventListener('click',()=>{
@@ -918,7 +977,7 @@ document.getElementById('wSave').addEventListener('click',()=>{
   state.weights=state.weights.filter(w=>w.d!==TODAY); state.weights.push({d:TODAY,kg:Math.round(v*10)/10});
   inp.value=''; save(); renderWeight(); renderPoids(); renderKcal();
 });
-function renderAll(){renderWeek();renderHabits();renderStreak();renderWeight();renderPlan();renderPoids();renderKcal();}
+function renderAll(){renderWeek();renderHabits();renderStreak();renderWeight();renderPlan();renderPoids();renderKcal();renderDay();}
 
 /* ---------- semaine ---------- */
 function renderPlan(){
