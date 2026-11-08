@@ -447,6 +447,7 @@ body.fs-on{overflow:hidden}
         <label class="field">Sexe<select id="pSexe"><option value="h">Homme</option><option value="f">Femme</option></select></label>
         <label class="field">Année de naissance<input id="pNaiss" type="number" inputmode="numeric" min="1930" max="2012"></label>
         <label class="field">Taille (cm)<input id="pTaille" type="number" inputmode="numeric" min="120" max="220"></label>
+        <label class="field">Poids actuel (kg)<input id="pPoids" type="number" inputmode="decimal" step="0.1" min="35" max="250"></label>
         <label class="field">Activité<select id="pAct">
           <option value="1.2">Très sédentaire</option><option value="1.375">Légèrement actif</option>
           <option value="1.55">Actif</option><option value="1.725">Très actif</option></select></label>
@@ -868,11 +869,14 @@ function renderPoids(){
     return '<li><span>'+DLONG[d.getDay()].slice(0,3)+'. '+d.getDate()+' '+MSH[d.getMonth()]+'</span><span class="kg">'+nf(w.kg)+' kg</span><span class="dl '+(dl==null?'':dl<0?'dn':dl>0?'up':'')+'">'+(dl==null?'départ':(dl>0?'+':'')+nf(dl))+'</span><button class="x" data-d="'+w.d+'" aria-label="Supprimer cette pesée">✕</button></li>'; }).join(''):'<li class="note">Aucune pesée pour l’instant.</li>';
   h.querySelectorAll('button[data-d]').forEach(x=>x.addEventListener('click',()=>{ state.weights=state.weights.filter(w=>w.d!==x.dataset.d); save(); renderWeight(); renderPoids(); renderKcal(); }));
   if(p){ $('pSexe').value=p.sexe||'h'; $('pNaiss').value=p.naissance||''; $('pTaille').value=p.taille||''; $('pAct').value=String(p.act||'1.375'); }
+  { const ck=curKg(); if(ck&&document.activeElement!==$('pPoids')) $('pPoids').value=ck; }
   $('besoinTxt').innerHTML=b?'Besoin d’entretien estimé : <b>'+b.tdee+' kcal/jour</b> · objectif perte progressive : <b>'+b.cible+' kcal/jour</b>.':'Renseigne ton profil et une pesée pour calculer ton besoin journalier.';
 }
 document.getElementById('pSave').addEventListener('click',()=>{
-  const n=+$('pNaiss').value, t=+$('pTaille').value;
+  const n=+$('pNaiss').value, t=+$('pTaille').value, kg=parseFloat(String($('pPoids').value).replace(',','.'));
   if(!(n>=1930&&n<=2012)||!(t>=120&&t<=220)){ $('pMsg').className='err'; $('pMsg').textContent='Vérifie l’année de naissance et la taille.'; return; }
+  if(!(kg>=35&&kg<=250)){ $('pMsg').className='err'; $('pMsg').textContent='Indique ton poids actuel en kg.'; return; }
+  { const r=Math.round(kg*10)/10; if(curKg()!==r){ state.weights=state.weights.filter(w=>w.d!==TODAY); state.weights.push({d:TODAY,kg:r}); renderWeight(); } }
   state.profil=Object.assign({},state.profil||{},{sexe:$('pSexe').value,naissance:n,taille:t,act:+$('pAct').value});
   save(); renderPoids(); renderKcal(); $('pMsg').className='ok'; $('pMsg').textContent='Profil enregistré.';
 });
@@ -889,8 +893,8 @@ function renderKcal(){
   $('needs').innerHTML=b?row('k','Calories',tot,b.cible,'kcal')+row('p','Protéines',P,b.prot,'g')+row('g','Glucides',G,b.glu,'g')+row('l','Lipides',Li,b.lip,'g')
     +(ms.some(m=>m.p==null)?'<p class="note" style="margin:0">Les repas ajoutés à la main ne comptent que dans les calories.</p>':''):'';
   $('kcalBody').innerHTML=b?'<p class="note" style="margin:0">'+(tot<=b.cible?'Il reste environ <b>'+(b.cible-tot)+' kcal</b> pour aujourd’hui.':'Objectif dépassé de '+(tot-b.cible)+' kcal : pas grave, on équilibre sur la semaine.')+'</p>'
-    :'<p class="note" style="margin:0">Complète ton profil pour calculer ton besoin journalier. <button class="link" id="goProfil">Compléter</button></p>';
-  const gp=$('goProfil'); if(gp) gp.addEventListener('click',()=>{ show('poids'); setTimeout(()=>$('profilCard').scrollIntoView({behavior:'smooth'}),50); });
+    :'<p class="note" style="margin:0">'+(state.profil&&state.profil.taille?'Il manque ton poids pour calculer ton besoin journalier.':'Complète ton profil pour calculer ton besoin journalier.')+' <button class="link" id="goProfil">'+(state.profil&&state.profil.taille?'Indiquer mon poids':'Compléter')+'</button></p>';
+  const gp=$('goProfil'); if(gp) gp.addEventListener('click',()=>{ show('poids'); setTimeout(()=>{ $('profilCard').scrollIntoView({behavior:'smooth'}); const f=state.profil&&state.profil.taille?$('pPoids'):$('pNaiss'); f&&f.focus({preventScroll:true}); },50); });
   $('meals').innerHTML=ms.map((m,i)=>'<li><span class="h">'+esc(m.t||'')+'</span><span>'+esc(m.nom||'Repas')+(m.p!=null?'<small>P '+m.p+' g · G '+m.g+' g · L '+m.l+' g</small>':'')+'</span><span class="k">'+(+m.kcal||0)+'</span><button class="x" data-i="'+i+'" aria-label="Retirer">✕</button></li>').join('');
   $('meals').querySelectorAll('button[data-i]').forEach(x=>x.addEventListener('click',()=>{ state.meals[TODAY].splice(+x.dataset.i,1); if(!state.meals[TODAY].length) delete state.meals[TODAY]; save(); renderKcal(); }));
   const own=!!(me&&me.id===OWNER); $('kPhoto').hidden=!own; $('hdrPhoto').hidden=!own;
