@@ -43,8 +43,8 @@ h1 small{display:block;font-family:var(--body);font-weight:400;font-size:.85rem;
 .streak{font-family:var(--display);font-size:1.05rem;font-weight:600;background:var(--gold-soft);color:var(--fg);padding:4px 10px;border-radius:999px;white-space:nowrap}
 .streak b{color:var(--gold)}
 nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:10px;margin-bottom:6px}
-.tabs{display:grid;grid-template-columns:repeat(4,1fr);background:var(--sunk);border-radius:12px;padding:4px;gap:4px}
-.tabs button{font-family:var(--display);font-weight:600;font-size:1.05rem;letter-spacing:.03em;text-transform:uppercase;border:0;background:transparent;color:var(--muted);padding:9px 2px;border-radius:9px;cursor:pointer}
+.tabs{display:grid;grid-template-columns:repeat(5,1fr);background:var(--sunk);border-radius:12px;padding:4px;gap:4px}
+.tabs button{font-family:var(--display);font-weight:600;font-size:clamp(.82rem,3.6vw,1.05rem);letter-spacing:.02em;text-transform:uppercase;border:0;background:transparent;color:var(--muted);padding:9px 2px;border-radius:9px;cursor:pointer}
 .tabs button[aria-selected="true"]{background:var(--surface);color:var(--fg);box-shadow:0 1px 2px rgba(0,0,0,.08)}
 button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible,label:focus-within{outline:2px solid var(--accent);outline-offset:2px}
 section{display:grid;gap:18px}
@@ -202,6 +202,33 @@ ol.board small{display:block;color:var(--muted);font-size:.8rem}
 .stage.live::after{opacity:1;animation:none;border-color:#2FD27A}
 .tstage{width:100%;max-height:72vh;margin:4px 0}
 .stage{max-height:72vh}
+/* calories, profil, poids */
+.kbar{position:relative;height:14px;background:var(--sunk);border-radius:999px;overflow:hidden}
+.kbar i{position:absolute;inset:0 auto 0 0;background:var(--accent);border-radius:999px;transition:width .4s}
+.kbar.over i{background:var(--warn)}
+.meals{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.meals li{display:grid;grid-template-columns:44px 1fr auto auto;gap:8px;align-items:center;padding:8px 10px;border-radius:10px;background:var(--sunk);font-size:.92rem}
+.meals .h{font-family:var(--display);font-weight:600;color:var(--muted)}
+.meals small{display:block;color:var(--muted);font-size:.78rem}
+.meals .k{font-family:var(--display);font-weight:700;font-size:1.15rem;font-variant-numeric:tabular-nums}
+.x{font:inherit;border:0;background:transparent;color:var(--muted);font-size:1.1rem;cursor:pointer;padding:2px 6px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.field select{font:inherit;font-size:16px;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:11px 10px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}
+.stat{background:var(--sunk);border-radius:12px;padding:10px 12px}
+.stat b{display:block;font-family:var(--display);font-size:1.5rem;font-variant-numeric:tabular-nums;line-height:1.1}
+.stat span{font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+.whist{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.whist li{display:grid;grid-template-columns:1fr auto auto auto;gap:10px;align-items:center;padding:8px 10px;border-bottom:1px solid var(--line)}
+.whist .kg{font-family:var(--display);font-weight:700;font-size:1.15rem}
+.whist .dl{font-size:.85rem;font-variant-numeric:tabular-nums}
+.dl.dn{color:var(--accent)}.dl.up{color:var(--warn)}
+.photobtn{width:44px;height:44px;border-radius:50%;border:0;background:var(--accent);color:var(--on-accent);font-size:1.3rem;cursor:pointer;display:grid;place-items:center;box-shadow:0 2px 6px rgba(0,0,0,.15)}
+.sheet{position:fixed;inset:0;z-index:120;background:rgba(0,0,0,.55);display:grid;align-items:end}
+.sheet>div{background:var(--surface);color:var(--fg);border-radius:18px 18px 0 0;padding:16px max(16px,env(safe-area-inset-left)) max(18px,env(safe-area-inset-bottom));max-height:88vh;overflow:auto;display:grid;gap:12px;max-width:640px;width:100%;margin:0 auto}
+.sheet img{width:100%;max-height:34vh;object-fit:cover;border-radius:12px}
+.macro{display:flex;gap:8px;flex-wrap:wrap}
+.macro span{background:var(--sunk);border-radius:999px;padding:4px 10px;font-size:.85rem}
 /* pictogramme de l'exercice sur l'image de la caméra */
 .exico{position:absolute;top:12px;right:12px;z-index:2;background:rgba(0,0,0,.62);color:#fff;border-radius:14px;padding:6px 8px 7px;display:grid;justify-items:center;gap:2px;width:96px}
 .exico .ico{width:64px;height:64px;stroke:#fff}
@@ -245,7 +272,8 @@ body.fs-on{overflow:hidden}
   <header>
     <h1>Cap Forme<small id="subtitle">Hygiène de vie · challenge de la semaine</small></h1>
     <div style="display:grid;justify-items:end;gap:6px">
-      <div class="streak" id="streak">Série <b>0</b> j</div>
+      <div style="display:flex;gap:8px;align-items:center"><div class="streak" id="streak">Série <b>0</b> j</div><button class="photobtn" id="hdrPhoto" hidden aria-label="Photographier mon repas" title="Photographier mon repas">📷</button></div>
+      <input type="file" id="mealFile" accept="image/*" capture="environment" hidden>
       <div class="who" id="who" hidden><b id="whoName"></b> · <button class="link" id="logout">Déconnexion</button></div>
     </div>
   </header>
@@ -256,6 +284,20 @@ body.fs-on{overflow:hidden}
     <div class="seg" role="tablist"><button aria-selected="true" data-a="in">Connexion</button><button aria-selected="false" data-a="up">Créer un compte</button></div>
     <form id="authForm" style="display:grid;gap:10px" novalidate>
       <label class="field" id="fPseudo" hidden>Pseudo (visible dans le classement)<input id="aPseudo" autocomplete="nickname" maxlength="20"></label>
+      <div id="fProfil" hidden style="display:grid;gap:10px">
+        <p class="note" style="margin:0">Pour calculer ton besoin journalier (reste privé, visible par toi seul) :</p>
+        <div class="grid2">
+          <label class="field">Sexe<select id="aSexe"><option value="h">Homme</option><option value="f">Femme</option></select></label>
+          <label class="field">Année de naissance<input id="aNaiss" type="number" inputmode="numeric" min="1930" max="2012" placeholder="1985"></label>
+          <label class="field">Taille (cm)<input id="aTaille" type="number" inputmode="numeric" min="120" max="220" placeholder="180"></label>
+          <label class="field">Poids (kg)<input id="aPoids" type="number" inputmode="decimal" step="0.1" min="35" max="250" placeholder="90"></label>
+        </div>
+        <label class="field">Activité en dehors du sport<select id="aAct">
+          <option value="1.2">Très sédentaire (bureau, peu de marche)</option>
+          <option value="1.375" selected>Légèrement actif (un peu de marche, 1-3 séances)</option>
+          <option value="1.55">Actif (debout souvent, 3-5 séances)</option>
+          <option value="1.725">Très actif (métier physique ou sport quotidien)</option></select></label>
+      </div>
       <label class="field" id="fEmail">E-mail<input id="aEmail" type="email" autocomplete="email" inputmode="email"></label>
       <label class="field" id="fPass">Mot de passe<input id="aPass" type="password" autocomplete="current-password" minlength="8"></label>
       <button class="btn" id="aGo" type="submit">Se connecter</button>
@@ -277,6 +319,13 @@ body.fs-on{overflow:hidden}
   </div>
   </div>
 
+  <div class="sheet" id="mealSheet" hidden><div>
+    <div class="row" style="justify-content:space-between"><h2>Analyse du repas</h2><button class="x" id="msClose" aria-label="Fermer">✕</button></div>
+    <img id="msImg" alt="Photo du repas">
+    <div id="msOut" aria-live="polite"></div>
+    <div class="row" id="msActs" hidden><button class="btn" id="msAdd">Ajouter à ma journée</button><button class="btn ghost" id="msCancel">Ne pas ajouter</button></div>
+  </div></div>
+
   <div id="app">
 
   <nav>
@@ -285,6 +334,7 @@ body.fs-on{overflow:hidden}
       <button role="tab" id="tab-reveil" aria-selected="false" data-tab="reveil">Routines</button>
       <button role="tab" id="tab-semaine" aria-selected="false" data-tab="semaine">Semaine</button>
       <button role="tab" id="tab-repas" aria-selected="false" data-tab="repas">Repas</button>
+      <button role="tab" id="tab-poids" aria-selected="false" data-tab="poids">Poids</button>
     </div>
   </nav>
 
@@ -316,9 +366,32 @@ body.fs-on{overflow:hidden}
       <div class="habits" id="habits"></div>
     </div>
 
+    <div class="card" id="kcalCard">
+      <div class="row" style="justify-content:space-between">
+        <h2>Calories du jour</h2>
+        <span class="num" id="kcalTot" style="font-size:1.3rem;font-weight:700"></span>
+      </div>
+      <div id="kcalBody"></div>
+      <div class="kbar" id="kcalBar"><i style="width:0%"></i></div>
+      <ul class="meals" id="meals"></ul>
+      <div class="row">
+        <button class="btn" id="kPhoto" hidden>📷 Photo du repas</button>
+        <button class="btn ghost" id="kAdd">+ Ajouter à la main</button>
+      </div>
+      <form id="kForm" class="row" hidden>
+        <input id="kNom" placeholder="Repas (ex. salade César)" style="flex:1;min-width:150px;font:inherit;font-size:16px;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px">
+        <input id="kVal" type="number" inputmode="numeric" min="10" max="4000" placeholder="kcal" aria-label="Calories">
+        <button class="btn" type="submit">OK</button>
+      </form>
+    </div>
+  </section>
+
+  <!-- POIDS -->
+  <section id="p-poids" hidden>
+    <div class="stats" id="wStats"></div>
     <div class="card">
       <div class="row" style="justify-content:space-between">
-        <h2>Poids</h2>
+        <h2>Courbe</h2>
         <span class="muted" id="wDelta"></span>
       </div>
       <svg class="chart" id="wChart" viewBox="0 0 640 220" role="img" aria-label="Courbe de poids"></svg>
@@ -328,6 +401,25 @@ body.fs-on{overflow:hidden}
         <span class="note">Une pesée par semaine suffit, le matin à jeun.</span>
       </div>
       <p class="note" style="margin:0">Premier palier : <b class="num" id="goalTxt">85,5 kg</b> . Rythme sain visé : 0,5 à 1 kg par semaine.</p>
+        </div>
+    <div class="card">
+      <h2>Historique des pesées</h2>
+      <ul class="whist" id="wHist"></ul>
+    </div>
+    <div class="card" id="profilCard">
+      <div class="row" style="justify-content:space-between"><h2>Mon profil</h2><span class="note">privé</span></div>
+      <p class="muted" id="besoinTxt" style="margin:0"></p>
+      <div class="grid2">
+        <label class="field">Sexe<select id="pSexe"><option value="h">Homme</option><option value="f">Femme</option></select></label>
+        <label class="field">Année de naissance<input id="pNaiss" type="number" inputmode="numeric" min="1930" max="2012"></label>
+        <label class="field">Taille (cm)<input id="pTaille" type="number" inputmode="numeric" min="120" max="220"></label>
+        <label class="field">Activité<select id="pAct">
+          <option value="1.2">Très sédentaire</option><option value="1.375">Légèrement actif</option>
+          <option value="1.55">Actif</option><option value="1.725">Très actif</option></select></label>
+      </div>
+      <button class="btn" id="pSave" style="justify-self:start">Enregistrer le profil</button>
+      <p id="pMsg" style="margin:0" aria-live="polite"></p>
+      <p class="note" style="margin:0">Besoin calculé avec la formule de Mifflin-St Jeor : c’est une estimation, à ajuster selon l’évolution réelle du poids. L’objectif vise environ 0,5 kg perdu par semaine, sans descendre sous un minimum raisonnable.</p>
     </div>
   </section>
 
@@ -540,6 +632,7 @@ const GOAL = Math.round(START_KG*0.95*10)/10;
 const WEEK_TARGET = 45;
 const DNAMES = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
 const DLONG = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
+const MSH = ['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
 const MONTHS = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
 // weekday -> plan
 const PLAN = {
@@ -563,15 +656,15 @@ const HABITS = [
 ];
 
 /* ---------- state ---------- */
-let state = {days:{}, weights:[], level:0, reps:{}};
+let state = {profil:null, meals:{}, days:{}, weights:[], level:0, reps:{}};
 let saveT = null, uid = 'local', remoteSave = null;
 const LS = 'capforme-v1';
 const lsKey=()=>uid==='local'?LS:LS+'-'+uid;
 function lsGet(){try{const s=localStorage.getItem(lsKey());return s?JSON.parse(s):null}catch(e){return null}}
 function lsSet(){try{localStorage.setItem(lsKey(),JSON.stringify(state))}catch(e){}}
-function freshState(){ return {days:{}, weights:[], level:0, reps:{}}; }
+function freshState(){ return {profil:null, meals:{}, days:{}, weights:[], level:0, reps:{}}; }
 function loadState(){ state=freshState(); merge(lsGet()); }
-function merge(s){ if(s&&typeof s==='object'){ state={days:s.days||{},weights:Array.isArray(s.weights)?s.weights:[],level:+s.level||0,reps:(s.reps&&typeof s.reps==='object')?s.reps:{}}; } }
+function merge(s){ if(s&&typeof s==='object'){ state={profil:(s.profil&&typeof s.profil==='object')?s.profil:null,meals:(s.meals&&typeof s.meals==='object')?s.meals:{},days:s.days||{},weights:Array.isArray(s.weights)?s.weights:[],level:+s.level||0,reps:(s.reps&&typeof s.reps==='object')?s.reps:{}}; } }
 function save(){ lsSet(); clearTimeout(saveT); saveT=setTimeout(()=>{ if(remoteSave) remoteSave(); },800); }
 merge(lsGet());
 
@@ -596,9 +689,9 @@ function goFor(id,wd){
   }
   return null;
 }
-function show(t){if(typeof exitFs==='function') exitFs();tabs.forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===t));['jour','reveil','semaine','repas'].forEach(x=>document.getElementById('p-'+x).hidden=x!==t);}
+function show(t){if(typeof exitFs==='function') exitFs();tabs.forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===t));['jour','reveil','semaine','repas','poids'].forEach(x=>document.getElementById('p-'+x).hidden=x!==t);}
 tabs.forEach(b=>b.addEventListener('click',()=>show(b.dataset.tab)));
-const h=(location.hash||'').slice(1); if(['jour','reveil','semaine','repas'].includes(h)) show(h);
+const h=(location.hash||'').slice(1); if(['jour','reveil','semaine','repas','poids'].includes(h)) show(h);
 
 /* ---------- jour ---------- */
 function renderWeek(){
@@ -677,17 +770,71 @@ function renderWeight(){
   g+='<text x="'+Math.min(lp[0]+8,W-R-60)+'" y="'+(lp[1]-10)+'" font-size="14" font-weight="700" fill="var(--fg)" font-family="Barlow Condensed, sans-serif">'+String(last.kg).replace('.',',')+' kg</text>';
   svg.innerHTML=g;
   const diff=Math.round((last.kg-ws[0].kg)*10)/10;
-  const imc=(last.kg/(HEIGHT*HEIGHT)).toFixed(1).replace('.',',');
+
   document.getElementById('wDelta').textContent=(diff<=0?'':'+')+String(diff).replace('.',',')+' kg depuis le départ';
   document.getElementById('goalTxt').textContent=String(GOAL).replace('.',',')+' kg';
 }
+const nf=(v,d=1)=>String(Math.round(v*Math.pow(10,d))/Math.pow(10,d)).replace('.',',');
+function curKg(){ const ws=[...state.weights].sort((a,b)=>a.d<b.d?-1:1); return ws.length?ws[ws.length-1].kg:(state.profil&&state.profil.poids)||null; }
+function besoin(){
+  const p=state.profil, kg=curKg(); if(!p||!p.taille||!p.naissance||!kg) return null;
+  const age=new Date().getFullYear()-p.naissance;
+  const bmr=10*kg+6.25*p.taille-5*age+(p.sexe==='f'?-161:5);
+  const tdee=bmr*(+p.act||1.375);
+  const plancher=p.sexe==='f'?1300:1600;
+  const cible=Math.max(plancher,Math.round((tdee-500)/50)*50);
+  return {bmr:Math.round(bmr),tdee:Math.round(tdee/10)*10,cible,age};
+}
+function renderPoids(){
+  const ws=[...state.weights].sort((a,b)=>a.d<b.d?-1:1), st=$('wStats'), p=state.profil;
+  const cards=[];
+  if(ws.length){ const first=ws[0], last=ws[ws.length-1];
+    cards.push(['Actuel',nf(last.kg)+' kg']); cards.push(['Depuis le départ',(last.kg-first.kg>0?'+':'')+nf(last.kg-first.kg)+' kg']);
+    if(p&&p.taille){ const imc=last.kg/Math.pow(p.taille/100,2); cards.push(['IMC',nf(imc)]); }
+    const t4=new Date(last.d).getTime()-28*86400000; const ref=ws.filter(w=>new Date(w.d).getTime()>=t4)[0];
+    if(ref&&ref!==last){ const wk=(new Date(last.d)-new Date(ref.d))/(7*86400000); if(wk>=0.9){ const rate=(last.kg-ref.kg)/wk; cards.push(['Tendance',(rate>0?'+':'')+nf(rate,2)+' kg/sem']);
+      const goal=Math.round(first.kg*0.95*10)/10; if(rate<-0.05&&last.kg>goal){ const w=Math.ceil((last.kg-goal)/-rate); const d=new Date(); d.setDate(d.getDate()+w*7); cards.push(['Palier '+nf(goal)+' kg','vers le '+d.getDate()+' '+MSH[d.getMonth()]]); } } }
+  }
+  const b=besoin(); if(b) cards.push(['Objectif / jour',b.cible+' kcal']);
+  st.innerHTML=cards.map(c=>'<div class="stat"><span>'+c[0]+'</span><b>'+c[1]+'</b></div>').join('');
+  const h=$('wHist'); const rev=[...ws].reverse();
+  h.innerHTML=rev.length?rev.map((w,i)=>{ const prev=rev[i+1]; const dl=prev?w.kg-prev.kg:null; const d=new Date(w.d);
+    return '<li><span>'+DLONG[d.getDay()].slice(0,3)+'. '+d.getDate()+' '+MONTHS[d.getMonth()].slice(0,4)+'.</span><span class="kg">'+nf(w.kg)+' kg</span><span class="dl '+(dl==null?'':dl<0?'dn':dl>0?'up':'')+'">'+(dl==null?'départ':(dl>0?'+':'')+nf(dl))+'</span><button class="x" data-d="'+w.d+'" aria-label="Supprimer cette pesée">✕</button></li>'; }).join(''):'<li class="note">Aucune pesée pour l’instant.</li>';
+  h.querySelectorAll('button[data-d]').forEach(x=>x.addEventListener('click',()=>{ state.weights=state.weights.filter(w=>w.d!==x.dataset.d); save(); renderWeight(); renderPoids(); renderKcal(); }));
+  if(p){ $('pSexe').value=p.sexe||'h'; $('pNaiss').value=p.naissance||''; $('pTaille').value=p.taille||''; $('pAct').value=String(p.act||'1.375'); }
+  $('besoinTxt').innerHTML=b?'Besoin d’entretien estimé : <b>'+b.tdee+' kcal/jour</b> · objectif perte progressive : <b>'+b.cible+' kcal/jour</b>.':'Renseigne ton profil et une pesée pour calculer ton besoin journalier.';
+}
+document.getElementById('pSave').addEventListener('click',()=>{
+  const n=+$('pNaiss').value, t=+$('pTaille').value;
+  if(!(n>=1930&&n<=2012)||!(t>=120&&t<=220)){ $('pMsg').className='err'; $('pMsg').textContent='Vérifie l’année de naissance et la taille.'; return; }
+  state.profil=Object.assign({},state.profil||{},{sexe:$('pSexe').value,naissance:n,taille:t,act:+$('pAct').value});
+  save(); renderPoids(); renderKcal(); $('pMsg').className='ok'; $('pMsg').textContent='Profil enregistré.';
+});
+/* ---------- calories du jour ---------- */
+const OWNER='96696a4e-1802-4183-a776-cf525d1455f4';
+function todayMeals(){ return (state.meals&&state.meals[TODAY])||[]; }
+function renderKcal(){
+  const ms=todayMeals(), tot=ms.reduce((a,m)=>a+(+m.kcal||0),0), b=besoin();
+  $('kcalTot').textContent=tot+(b?' / '+b.cible:'')+' kcal';
+  const bar=$('kcalBar'); bar.querySelector('i').style.width=b?Math.min(100,tot/b.cible*100)+'%':'0%'; bar.classList.toggle('over',!!b&&tot>b.cible); bar.hidden=!b;
+  $('kcalBody').innerHTML=b?'<p class="note" style="margin:0">'+(tot<=b.cible?'Il reste environ <b>'+(b.cible-tot)+' kcal</b> pour aujourd’hui.':'Objectif dépassé de '+(tot-b.cible)+' kcal : pas grave, on équilibre sur la semaine.')+'</p>'
+    :'<p class="note" style="margin:0">Complète ton profil pour calculer ton besoin journalier. <button class="link" id="goProfil">Compléter</button></p>';
+  const gp=$('goProfil'); if(gp) gp.addEventListener('click',()=>{ show('poids'); setTimeout(()=>$('profilCard').scrollIntoView({behavior:'smooth'}),50); });
+  $('meals').innerHTML=ms.map((m,i)=>'<li><span class="h">'+esc(m.t||'')+'</span><span>'+esc(m.nom||'Repas')+(m.p!=null?'<small>P '+m.p+' g · G '+m.g+' g · L '+m.l+' g</small>':'')+'</span><span class="k">'+(+m.kcal||0)+'</span><button class="x" data-i="'+i+'" aria-label="Retirer">✕</button></li>').join('');
+  $('meals').querySelectorAll('button[data-i]').forEach(x=>x.addEventListener('click',()=>{ state.meals[TODAY].splice(+x.dataset.i,1); if(!state.meals[TODAY].length) delete state.meals[TODAY]; save(); renderKcal(); }));
+  const own=!!(me&&me.id===OWNER); $('kPhoto').hidden=!own; $('hdrPhoto').hidden=!own;
+}
+function nowHM(){ const d=new Date(); return pad(d.getHours())+':'+pad(d.getMinutes()); }
+function addMeal(m){ state.meals=state.meals||{}; (state.meals[TODAY]=state.meals[TODAY]||[]).push(Object.assign({t:nowHM()},m)); save(); renderKcal(); }
+document.getElementById('kAdd').addEventListener('click',()=>{ $('kForm').hidden=!$('kForm').hidden; if(!$('kForm').hidden) $('kNom').focus(); });
+document.getElementById('kForm').addEventListener('submit',ev=>{ ev.preventDefault(); const v=Math.round(+$('kVal').value); if(!(v>=10&&v<=4000)){ $('kVal').focus(); return; } addMeal({nom:$('kNom').value.trim()||'Repas',kcal:v,src:'manuel'}); $('kNom').value=''; $('kVal').value=''; $('kForm').hidden=true; });
 document.getElementById('wSave').addEventListener('click',()=>{
   const inp=document.getElementById('wInput'); const v=parseFloat(String(inp.value).replace(',','.'));
   if(!(v>40&&v<200)){inp.focus();return}
   state.weights=state.weights.filter(w=>w.d!==TODAY); state.weights.push({d:TODAY,kg:Math.round(v*10)/10});
-  inp.value=''; save(); renderWeight();
+  inp.value=''; save(); renderWeight(); renderPoids(); renderKcal();
 });
-function renderAll(){renderWeek();renderHabits();renderStreak();renderWeight();renderPlan();}
+function renderAll(){renderWeek();renderHabits();renderStreak();renderWeight();renderPlan();renderPoids();renderKcal();}
 
 /* ---------- semaine ---------- */
 function renderPlan(){
@@ -1072,7 +1219,7 @@ const SB_URL='https://pgkhuctxkjouinisicmw.supabase.co', SB_KEY='eyJhbGciOiJIUzI
 const SB_JS='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.95.3/dist/umd/supabase.js';
 const EXN={squat:'squats',pompes:'pompes',fente:'fentes',pont:'ponts'};
 const PAGE_URL=location.origin+location.pathname;
-let sb=null, me=null, period='semaine';
+var sb=null, me=null; let period='semaine';
 const QK=LS+'-queue';
 function queue(){ try{ return JSON.parse(localStorage.getItem(QK)||'[]'); }catch(e){ return []; } }
 function setQueue(q){ try{ localStorage.setItem(QK,JSON.stringify(q)); }catch(e){} }
@@ -1113,7 +1260,7 @@ $('bRefresh').addEventListener('click',()=>{ sendQueue(); loadBoard(); });
 
 let aMode='in';
 function setA(m){ aMode=m; document.querySelectorAll('#auth .seg button').forEach(x=>x.setAttribute('aria-selected',x.dataset.a===m));
-  $('fPseudo').hidden=m!=='up'; $('fPass').hidden=m==='forgot'; $('aGo').textContent=m==='up'?'Créer mon compte':m==='forgot'?'Recevoir le lien':'Se connecter';
+  $('fPseudo').hidden=m!=='up'; $('fProfil').hidden=m!=='up'; $('fPass').hidden=m==='forgot'; $('aGo').textContent=m==='up'?'Créer mon compte':m==='forgot'?'Recevoir le lien':'Se connecter';
   $('aPass').autocomplete=m==='up'?'new-password':'current-password'; $('aForgot').textContent=m==='forgot'?'Retour à la connexion':'Mot de passe oublié ?'; amsg(''); }
 function amsg(t,ok){ $('aMsg').className=ok?'ok':'err'; $('aMsg').textContent=t||''; }
 document.querySelectorAll('#auth .seg button').forEach(b=>b.addEventListener('click',()=>setA(b.dataset.a)));
@@ -1127,10 +1274,16 @@ $('authForm').addEventListener('submit',async ev=>{
     return error?amsg(fr(error)):amsg('Si un compte existe, un lien de réinitialisation vient d’être envoyé.',true); }
   if(pass.length<8) return amsg('Mot de passe : 8 caractères minimum.');
   if(aMode==='up'&&(pseudo.length<2||pseudo.length>20)) return amsg('Pseudo : entre 2 et 20 caractères.');
+  let profil=null;
+  if(aMode==='up'){ const n=+$('aNaiss').value, t=+$('aTaille').value, kg=+String($('aPoids').value).replace(',','.');
+    if(!(n>=1930&&n<=2012)) return amsg('Indique ton année de naissance.');
+    if(!(t>=120&&t<=220)) return amsg('Indique ta taille en cm (ex. 180).');
+    if(!(kg>=35&&kg<=250)) return amsg('Indique ton poids en kg (ex. 90).');
+    profil={sexe:$('aSexe').value,naissance:n,taille:t,poids:Math.round(kg*10)/10,act:+$('aAct').value}; }
   $('aGo').disabled=true;
   try{
     if(aMode==='up'){
-      const {data,error}=await sb.auth.signUp({email,password:pass,options:{data:{pseudo},emailRedirectTo:PAGE_URL}});
+      const {data,error}=await sb.auth.signUp({email,password:pass,options:{data:{pseudo,profil},emailRedirectTo:PAGE_URL}});
       if(error) return amsg(fr(error));
       if(!data.session) return amsg('Compte créé. Ouvre le lien reçu par e-mail pour l’activer, puis connecte-toi.',true);
     } else {
@@ -1174,15 +1327,64 @@ async function pullRemote(){
   if(data&&data.data){ const loc=state; merge(data.data);
     // garde ce qui a été fait hors ligne sur cet appareil
     Object.entries(loc.days||{}).forEach(([k,v])=>{ state.days[k]=Object.assign({},state.days[k]||{},v); });
+    Object.entries(loc.meals||{}).forEach(([k,v])=>{ if(!state.meals[k]) state.meals[k]=v; });
+    if(!state.profil&&loc.profil) state.profil=loc.profil;
     Object.entries(loc.reps||{}).forEach(([k,v])=>{ const r=state.reps[k]||(state.reps[k]={}); Object.entries(v).forEach(([e,n])=>{ r[e]=Math.max(r[e]||0,n); }); });
     const ws=new Map((state.weights||[]).map(w=>[w.d,w])); (loc.weights||[]).forEach(w=>{ if(!ws.has(w.d)) ws.set(w.d,w); }); state.weights=[...ws.values()];
     lsSet(); syncLevel(); renderAll(); renderToday(); }
+  seedProfil();
   save();
 }
+function seedProfil(){
+  const mp=me&&me.meta&&me.meta.profil; if(!mp) return;
+  if(!state.profil){ state.profil={sexe:mp.sexe,naissance:mp.naissance,taille:mp.taille,act:mp.act}; }
+  if(!state.weights.length&&mp.poids){ state.weights.push({d:TODAY,kg:mp.poids}); }
+  renderAll();
+}
 remoteSave=async()=>{ if(!sb||!me||!me.pseudo) return; try{ await sb.from('etat').upsert({user_id:me.id,data:JSON.parse(JSON.stringify(state)),updated_at:new Date().toISOString()}); }catch(e){} };
+/* ---------- photo du repas (compte autorisé uniquement) ---------- */
+let mealRes=null;
+function momentRepas(){ const h=new Date().getHours(); return h<11?'petit-déjeuner':h<15?'déjeuner':h<18?'goûter':'dîner'; }
+function openSheet(){ $('mealSheet').hidden=false; document.body.classList.add('fs-on'); }
+function closeSheet(){ $('mealSheet').hidden=true; document.body.classList.remove('fs-on'); mealRes=null; $('mealFile').value=''; }
+['hdrPhoto','kPhoto'].forEach(id=>$(id).addEventListener('click',()=>{ if(me&&me.id===OWNER) $('mealFile').click(); }));
+$('msClose').addEventListener('click',closeSheet); $('msCancel').addEventListener('click',closeSheet);
+$('mealSheet').addEventListener('click',e=>{ if(e.target.id==='mealSheet') closeSheet(); });
+async function shrink(file){
+  const url=URL.createObjectURL(file);
+  try{ const img=await new Promise((ok,ko)=>{ const i=new Image(); i.onload=()=>ok(i); i.onerror=ko; i.src=url; });
+    const k=Math.min(1,1024/Math.max(img.naturalWidth,img.naturalHeight)); const c=document.createElement('canvas');
+    c.width=Math.round(img.naturalWidth*k); c.height=Math.round(img.naturalHeight*k); c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+    return c.toDataURL('image/jpeg',.82);
+  } finally { URL.revokeObjectURL(url); }
+}
+$('mealFile').addEventListener('change',async()=>{
+  const f=$('mealFile').files[0]; if(!f) return;
+  openSheet(); $('msActs').hidden=true; $('msOut').innerHTML='<p class="muted">Analyse de l’assiette… (10 à 20 secondes)</p>';
+  let dataUrl; try{ dataUrl=await shrink(f); }catch(e){ $('msOut').innerHTML='<p class="err">Impossible de lire cette photo.</p>'; return; }
+  $('msImg').src=dataUrl;
+  const b=besoin(), deja=todayMeals().reduce((a,m)=>a+(+m.kcal||0),0);
+  try{
+    const {data,error}=await sb.functions.invoke('analyse-repas',{body:{image:dataUrl.split(',')[1],mediaType:'image/jpeg',moment:momentRepas(),cible:b&&b.cible,deja}});
+    if(error){ let code=''; try{ code=(await error.context.json()).error; }catch(e){}
+      const M={no_key:'L’analyse n’est pas encore activée : il manque la clé API Anthropic dans Supabase.',forbidden:'L’analyse photo est réservée au compte du propriétaire.',not_auth:'Reconnecte-toi puis réessaie.',api:'Le service d’analyse n’a pas répondu (crédit API épuisé ?). Réessaie plus tard.'};
+      $('msOut').innerHTML='<p class="err">'+(M[code]||'L’analyse n’a pas abouti. Réessaie avec une photo nette, prise de dessus.')+'</p>'; return; }
+    if(data.erreur){ $('msOut').innerHTML='<p class="err">Je ne vois pas de repas sur cette photo.</p>'; return; }
+    mealRes=data; const k=Math.round(+data.kcal||0), reste=b?b.cible-deja-k:null;
+    $('msOut').innerHTML='<h3 style="margin:0">'+esc(data.nom||'Repas')+'</h3>'+
+      '<div class="row" style="align-items:baseline;gap:10px"><span class="num" style="font-size:2.4rem;font-weight:700">'+k+' kcal</span>'+(data.kcal_min?'<span class="note">entre '+data.kcal_min+' et '+data.kcal_max+'</span>':'')+'</div>'+
+      '<div class="macro"><span>Protéines '+(data.proteines||0)+' g</span><span>Glucides '+(data.glucides||0)+' g</span><span>Lipides '+(data.lipides||0)+' g</span>'+(data.confiance?'<span>Fiabilité : '+esc(data.confiance)+'</span>':'')+'</div>'+
+      (Array.isArray(data.plats)&&data.plats.length?'<ul class="meals">'+data.plats.map(x=>'<li style="grid-template-columns:1fr auto"><span>'+esc(x.nom)+'<small>'+esc(x.portion||'')+'</small></span><span class="k">'+(Math.round(+x.kcal)||0)+'</span></li>').join('')+'</ul>':'')+
+      (b?'<p style="margin:0">'+(reste>=0?'Après ce repas, il te restera environ <b>'+reste+' kcal</b> sur '+b.cible+'.':'Avec ce repas, tu dépasses ton objectif du jour de <b>'+(-reste)+' kcal</b> : on compense tranquillement sur les prochains repas.')+'</p>':'')+
+      (data.conseil?'<p class="note" style="margin:0"><b>Conseil :</b> '+esc(data.conseil)+'</p>':'')+
+      '<p class="note" style="margin:0">Estimation à partir d’une photo : les portions et les sauces peuvent la faire varier.</p>';
+    $('msActs').hidden=false;
+  }catch(e){ $('msOut').innerHTML='<p class="err">L’analyse n’a pas abouti (réseau ?). Réessaie.</p>'; }
+});
+$('msAdd').addEventListener('click',()=>{ if(!mealRes) return; addMeal({nom:mealRes.nom||'Repas',kcal:Math.round(+mealRes.kcal||0),p:Math.round(+mealRes.proteines||0),g:Math.round(+mealRes.glucides||0),l:Math.round(+mealRes.lipides||0),src:'photo'}); closeSheet(); show('jour'); setTimeout(()=>$('kcalCard').scrollIntoView({behavior:'smooth'}),50); });
 async function onSession(session){
   if(!session){ me=null; uid='local'; loadState(); render(); renderAll(); return; }
-  me={id:session.user.id,email:session.user.email,pseudo:null};
+  me={id:session.user.id,email:session.user.email,pseudo:null,meta:session.user.user_metadata||{}};
   me.pseudo=await ensureProfile(session.user); render();
 }
 if(SB_URL&&SB_KEY){
