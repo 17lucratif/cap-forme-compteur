@@ -206,10 +206,14 @@ ol.board small{display:block;color:var(--muted);font-size:.8rem}
 .kbar{position:relative;height:14px;background:var(--sunk);border-radius:999px;overflow:hidden}
 .kbar i{position:absolute;inset:0 auto 0 0;background:var(--accent);border-radius:999px;transition:width .4s}
 .kbar.over i{background:var(--warn)}
-.topk{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;margin-top:8px;padding:6px 10px;border-radius:10px;background:var(--surface);border:1px solid var(--line);cursor:pointer;width:100%;font:inherit;color:var(--fg);text-align:left}
-.topk .kbar{height:10px}
-.topk b{font-family:var(--display);font-size:1.05rem;font-variant-numeric:tabular-nums;white-space:nowrap}
-.topk span{font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;font-weight:700;color:var(--muted)}
+.topk{position:relative;display:block;width:100%;height:30px;margin-top:8px;padding:0;border:0;border-radius:999px;background:var(--sunk);box-shadow:inset 0 0 0 1px var(--line);overflow:hidden;cursor:pointer;font:inherit}
+.topk .fill{position:absolute;inset:0 auto 0 0;width:0%;border-radius:999px;background:linear-gradient(90deg,#2C8A5E,#3FB27A);transition:width .6s ease,background .4s}
+.topk.mid .fill{background:linear-gradient(90deg,#3FB27A,#D9A62E)}
+.topk.high .fill{background:linear-gradient(90deg,#D9A62E,#E07B2E)}
+.topk.over .fill{background:linear-gradient(90deg,#E07B2E,#C4453A)}
+.topk .fill::after{content:"";position:absolute;inset:0;border-radius:999px;background:linear-gradient(180deg,rgba(255,255,255,.28),rgba(255,255,255,0) 60%)}
+.topk .txt{position:relative;z-index:1;text-shadow:0 1px 0 rgba(255,255,255,.45);display:flex;justify-content:space-between;align-items:center;height:100%;padding:0 12px;font-family:var(--display);font-weight:700;font-size:1rem;letter-spacing:.02em;color:var(--fg);font-variant-numeric:tabular-nums}
+.topk .txt small{font-weight:600;opacity:.8}
 .needs{display:grid;gap:10px}
 .need{display:grid;grid-template-columns:86px 1fr auto;gap:10px;align-items:center}
 .need .nl{font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;font-weight:700;color:var(--muted)}
@@ -348,7 +352,7 @@ body.fs-on{overflow:hidden}
       <button role="tab" id="tab-repas" aria-selected="false" data-tab="repas">Repas</button>
       <button role="tab" id="tab-poids" aria-selected="false" data-tab="poids">Poids</button>
     </div>
-    <button class="topk" id="topK" hidden aria-label="Calories du jour"><span>Kcal</span><div class="kbar"><i style="width:0%"></i></div><b id="topKv">0 / 0</b></button>
+    <button class="topk" id="topK" hidden role="progressbar" aria-valuemin="0" aria-label="Calories du jour"><span class="fill" id="topKf"></span><span class="txt"><span id="topKv">0 / 0 kcal</span><small id="topKp">0 %</small></span></button>
   </nav>
 
   <!-- JOUR -->
@@ -844,7 +848,10 @@ function renderKcal(){
   $('meals').querySelectorAll('button[data-i]').forEach(x=>x.addEventListener('click',()=>{ state.meals[TODAY].splice(+x.dataset.i,1); if(!state.meals[TODAY].length) delete state.meals[TODAY]; save(); renderKcal(); }));
   const own=!!(me&&me.id===OWNER); $('kPhoto').hidden=!own; $('hdrPhoto').hidden=!own;
   const tk=$('topK'); tk.hidden=!own||!b;
-  if(own&&b){ tk.querySelector('i').style.width=Math.min(100,tot/b.cible*100)+'%'; tk.querySelector('.kbar').classList.toggle('over',tot>b.cible); $('topKv').textContent=tot+' / '+b.cible; tk.title=(tot<=b.cible?'Reste '+(b.cible-tot):'Dépassé de '+(tot-b.cible))+' kcal'; }
+  if(own&&b){ const pc=Math.round(tot/b.cible*100); $('topKf').style.width=Math.min(100,pc)+'%';
+    tk.classList.toggle('mid',pc>=60&&pc<90); tk.classList.toggle('high',pc>=90&&pc<=100); tk.classList.toggle('over',pc>100);
+    $('topKv').textContent=tot+' / '+b.cible+' kcal'; $('topKp').textContent=pc>100?'+'+(tot-b.cible)+' kcal':pc+' %';
+    tk.setAttribute('aria-valuemax',b.cible); tk.setAttribute('aria-valuenow',tot); tk.title=(tot<=b.cible?'Reste '+(b.cible-tot):'Dépassé de '+(tot-b.cible))+' kcal'; }
 }
 function nowHM(){ const d=new Date(); return pad(d.getHours())+':'+pad(d.getMinutes()); }
 function addMeal(m){ state.meals=state.meals||{}; (state.meals[TODAY]=state.meals[TODAY]||[]).push(Object.assign({t:nowHM()},m)); save(); renderKcal(); }
