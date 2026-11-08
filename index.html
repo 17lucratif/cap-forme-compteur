@@ -81,7 +81,11 @@ h3{font-family:var(--display);font-weight:600;font-size:1.15rem;margin:0;letter-
 .habit input:checked::after{content:"";width:7px;height:13px;border:solid var(--on-accent);border-width:0 3px 3px 0;transform:rotate(45deg) translate(-1px,-1px)}
 .habit .t{flex:1;min-width:0}
 .habit .t small{display:block;color:var(--muted);font-size:.85rem}
+.habit{gap:10px}
+@media (max-width:420px){.habit .ico{width:28px;height:28px}.habit .t small{font-size:.8rem}}
 .habit .pts{font-family:var(--display);font-weight:600;color:var(--muted);font-size:1rem}
+.go{font-family:var(--display);font-weight:600;font-size:.9rem;letter-spacing:.02em;border:0;border-radius:999px;padding:6px 10px;background:var(--accent);color:var(--on-accent);cursor:pointer;white-space:nowrap;flex:none}
+.habit.done .go{background:var(--surface);color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
 .habit.done{background:var(--accent-soft);border-color:transparent}
 .tag{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;background:var(--gold-soft);color:var(--fg);padding:2px 6px;border-radius:6px;margin-left:6px;vertical-align:2px}
 /* forms */
@@ -532,6 +536,16 @@ function dayPts(k){const e=state.days[k]||{};return HABITS.reduce((s,h)=>s+(e[h.
 
 /* ---------- tabs ---------- */
 const tabs=[...document.querySelectorAll('nav .tabs button')];
+function goFor(id,wd){
+  const open=(m)=>()=>{ show('reveil'); setMode(m); window.scrollTo({top:0,behavior:'smooth'}); };
+  if(id==='reveil') return {txt:'Lancer',aria:'Lancer la routine du réveil',run:open('reveil')};
+  if(id==='etirements') return {txt:'Lancer',aria:'Lancer les étirements',run:open('etirements')};
+  if(id==='seance'){
+    if(PLAN[wd].t.indexOf('Forest Hill')>=0) return {txt:'Voir',aria:'Voir la séance au club',run:()=>{ show('semaine'); window.scrollTo({top:0,behavior:'smooth'}); }};
+    return {txt:'Lancer',aria:'Ouvrir le compteur de répétitions',run:open('coach')};
+  }
+  return null;
+}
 function show(t){tabs.forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===t));['jour','reveil','semaine','repas'].forEach(x=>document.getElementById('p-'+x).hidden=x!==t);}
 tabs.forEach(b=>b.addEventListener('click',()=>show(b.dataset.tab)));
 const h=(location.hash||'').slice(1); if(['jour','reveil','semaine','repas'].includes(h)) show(h);
@@ -566,7 +580,9 @@ function renderHabits(){
     const lab=document.createElement('label'); lab.className='habit'+(e[hb.id]?' done':'');
     const id='h-'+hb.id;
     const planned = hb.planned && PLAN[wd].key;
-    lab.innerHTML='<input type="checkbox" id="'+id+'"'+(e[hb.id]?' checked':'')+'>'+icon(hb.ico)+'<span class="t">'+hb.label+(planned?'<span class="tag">prévue</span>':'')+'<small>'+(hb.planned&&PLAN[wd].key?PLAN[wd].t:hb.sub)+'</small></span><span class="pts">+'+hb.pts+'</span>';
+    const go= k===TODAY ? goFor(hb.id,wd) : null;
+    lab.innerHTML='<input type="checkbox" id="'+id+'"'+(e[hb.id]?' checked':'')+'>'+icon(hb.ico)+'<span class="t">'+hb.label+(planned?'<span class="tag">prévue</span>':'')+'<small>'+(hb.planned&&PLAN[wd].key?PLAN[wd].t:hb.sub)+'</small></span>'+(go?'<button type="button" class="go" aria-label="'+go.aria+'">'+(e[hb.id]?'Refaire':go.txt)+'</button>':'')+'<span class="pts">+'+hb.pts+'</span>';
+    if(go) lab.querySelector('.go').addEventListener('click',ev=>{ ev.preventDefault(); ev.stopPropagation(); go.run(); });
     lab.querySelector('input').addEventListener('change',ev=>{
       const d=state.days[k]||(state.days[k]={}); if(ev.target.checked) d[hb.id]=1; else delete d[hb.id];
       if(!Object.keys(d).length) delete state.days[k];
