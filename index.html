@@ -200,13 +200,35 @@ ol.board small{display:block;color:var(--muted);font-size:.8rem}
 .stage.win::after{animation:win .7s ease-out}
 .stage.done::after{opacity:1;animation:none}
 .stage.live::after{opacity:1;animation:none;border-color:#2FD27A}
-.tstage{width:100%;max-height:56vh;margin:4px 0}
+.tstage{width:100%;max-height:72vh;margin:4px 0}
+.stage{max-height:72vh}
+/* plein écran (overlay, marche aussi sur iPhone) */
+body.fs-on{overflow:hidden}
+.fsmode{position:fixed!important;inset:0;z-index:100;background:#0B100D!important;color:#E7EEE9;border-radius:0!important;margin:0!important;
+  padding:max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left))!important;
+  display:flex!important;flex-direction:column;gap:6px;overflow:hidden}
+.fsmode .stage{flex:1 1 auto;min-height:0;max-height:none!important;aspect-ratio:auto!important;width:100%;border-radius:12px}
+.fsmode .btn.ghost,.fsmode .sndb{background:#202B26;color:#E7EEE9;border-color:#2C3832}
+.fsmode .label,.fsmode .next{color:#9AA9A1}
+.timer.fsmode{text-align:center;justify-items:stretch}
+.timer.fsmode #tMsg{display:none}
+.timer.fsmode #tIco,.timer.fsmode #tStage{order:5}
+.timer.fsmode .row{order:6}
+.timer.fsmode #tIco:not([hidden]){flex:1 1 auto;display:grid;place-items:center;min-height:0}
+.timer.fsmode #tIco .ico{width:min(60vw,40vh);height:min(60vw,40vh);stroke:#E7EEE9}
+.timer.fsmode #tIco .ico .prop{stroke:#6F7D76}
+.timer.fsmode .now{font-size:1.25rem}
+.timer.fsmode .clock{font-size:2.6rem}
+.timer.fsmode .row{margin-top:0!important}
+#coach.fsmode #cEx,#coach.fsmode #cOpts,#coach.fsmode #cTip,#coach.fsmode #cToday,#coach.fsmode #boardCard{display:none!important}
+#coach.fsmode #cMsg{color:#9AA9A1}
+.fsbtn{font:inherit;font-size:.95rem;border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:999px;padding:6px 12px;cursor:pointer}
 .tstage .cnt b{font-size:2.6rem}
 .tstage .cue{font-size:clamp(.95rem,4.6vw,1.3rem)!important;padding:7px 16px}
 @keyframes win{0%{opacity:0}15%{opacity:1}70%{opacity:1}100%{opacity:0}}
 .sndb{font:inherit;font-size:.95rem;border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:999px;padding:6px 12px;cursor:pointer}
 .sndb[aria-pressed="false"]{color:var(--muted);text-decoration:line-through}
-.cue{white-space:nowrap}
+.cue{white-space:normal;line-height:1.15;border-radius:20px!important;width:max-content;max-width:calc(100% - 24px)}
 .cue{font-size:clamp(1.15rem,6vw,1.7rem)!important}
 @media (prefers-reduced-motion:reduce){.stage.win::after{animation:none;opacity:1}}
 </style></head><body>
@@ -317,11 +339,12 @@ ol.board small{display:block;color:var(--muted);font-size:.8rem}
       </div>
       <div id="coach" hidden style="display:grid;gap:12px">
         <div class="lvl" id="cEx"></div>
-        <div class="row">
+        <div class="row" id="cOpts">
           <span class="stepper"><button id="cRm" aria-label="Moins de répétitions">−</button><output id="cReps">12 rép.</output><button id="cRp" aria-label="Plus de répétitions">+</button></span>
           <span class="stepper"><button id="cSm" aria-label="Moins de séries">−</button><output id="cSets">1 série</output><button id="cSp" aria-label="Plus de séries">+</button></span>
           <label class="chk"><input type="checkbox" id="cVoice" checked> Voix</label>
           <button class="sndb" id="cSnd" aria-pressed="true" title="Couper ou remettre le son de réussite">🔊 Son</button>
+          <label class="chk" title="À la fin d’un exercice, passer automatiquement au suivant"><input type="checkbox" id="cChain" checked> Enchaîner les exercices</label>
         </div>
         <div class="stage">
           <video id="cVid" playsinline muted hidden></video>
@@ -337,6 +360,7 @@ ol.board small{display:block;color:var(--muted);font-size:.8rem}
           <button class="btn ghost" id="cCam">Avec la caméra</button>
           <button class="btn ghost" id="cPlus" hidden>+1</button>
           <button class="btn ghost" id="cStop" hidden>Arrêter</button>
+          <button class="fsbtn" id="cFs" data-target="coach">⛶ Plein écran</button>
         </div>
         <p class="note" id="cMsg" style="margin:0" aria-live="polite"></p>
         <p class="note" id="cTip" style="margin:0"></p>
@@ -365,7 +389,10 @@ ol.board small{display:block;color:var(--muted);font-size:.8rem}
           <button class="btn ghost" id="tSkip" disabled>Passer</button>
           <button class="btn ghost" id="tReset" disabled>Arrêter</button>
         </div>
-        <button class="sndb" id="tCam" style="margin-top:4px">📷 Avec la caméra</button>
+        <div class="row" style="justify-content:center;margin-top:4px">
+          <button class="sndb" id="tCam">📷 Avec la caméra</button>
+          <button class="fsbtn" id="tFs" data-target="tBox">⛶ Plein écran</button>
+        </div>
         <p class="note" id="tMsg" style="margin:0" aria-live="polite"></p>
       </div>
       <ol class="steps" id="steps"></ol>
@@ -558,7 +585,7 @@ function goFor(id,wd){
   }
   return null;
 }
-function show(t){tabs.forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===t));['jour','reveil','semaine','repas'].forEach(x=>document.getElementById('p-'+x).hidden=x!==t);}
+function show(t){if(typeof exitFs==='function') exitFs();tabs.forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===t));['jour','reveil','semaine','repas'].forEach(x=>document.getElementById('p-'+x).hidden=x!==t);}
 tabs.forEach(b=>b.addEventListener('click',()=>show(b.dataset.tab)));
 const h=(location.hash||'').slice(1); if(['jour','reveil','semaine','repas'].includes(h)) show(h);
 
@@ -709,7 +736,7 @@ function renderSteps(cur){
 }
 const $=id=>document.getElementById(id);
 function setMode(m){
-  if(running) return; if(m!=='coach') stopCoach(); if(typeof camOff==='function'&&tCamOn) camOff(); mode=m;
+  if(running) return; exitFs(); if(m!=='coach') stopCoach(); if(typeof camOff==='function'&&tCamOn) camOff(); mode=m;
   document.querySelectorAll('#mode button').forEach(x=>x.setAttribute('aria-selected',x.dataset.m===m));
   $('rTitle').textContent=MODES[m].title; $('rIntro').textContent=MODES[m].intro;
   $('lvl').hidden=m!=='reveil'; $('tBox').hidden=$('steps').hidden=m==='coach'; $('coach').hidden=m!=='coach';
@@ -772,6 +799,8 @@ function ensureAudio(){ try{ if(!actx){const C=window.AudioContext||window.webki
 let sndOn=true; try{ sndOn=localStorage.getItem('capforme-son')!=='0'; }catch(e){}
 function paintSnd(){ const b=$('cSnd'); b.setAttribute('aria-pressed',sndOn); b.textContent=(sndOn?'🔊':'🔇')+' Son'; }
 paintSnd();
+try{ $('cChain').checked=localStorage.getItem('capforme-chain')!=='0'; }catch(e){}
+$('cChain').addEventListener('change',()=>{ try{ localStorage.setItem('capforme-chain',$('cChain').checked?'1':'0'); }catch(e){} });
 $('cSnd').addEventListener('click',()=>{ sndOn=!sndOn; try{ localStorage.setItem('capforme-son',sndOn?'1':'0'); }catch(e){} paintSnd(); if(sndOn){ ensureAudio(); chime(); } });
 function tone(f,t0,d,v,type){ const o=actx.createOscillator(),g=actx.createGain(); o.type=type||'sine'; o.frequency.value=f; o.connect(g); g.connect(actx.destination);
   g.gain.setValueAtTime(0.0001,t0); g.gain.exponentialRampToValueAtTime(v,t0+.015); g.gain.exponentialRampToValueAtTime(.0001,t0+d); o.start(t0); o.stop(t0+d+.02); }
@@ -831,7 +860,10 @@ function count(){
 }
 function setDone(){
   flushRun();
-  if(cRun.set>=cSets){ finishCoach(); return; }
+  if(cRun.set>=cSets){
+    const nx=COACH[COACH.indexOf(cx)+1];
+    if($('cChain').checked&&nx){ nextExercise(nx); return; }
+    finishCoach(); return; }
   cRun.resting=true; let r=60; cue('Repos '+fmt(r),'idle','Série '+cRun.set+' terminée. Une minute de repos.');
   cRun.iv=setInterval(()=>{ r--; if(r<=3&&r>0) beep(660,.08);
     if(r>0){ cue('Repos '+fmt(r),'idle'); return; }
@@ -841,7 +873,24 @@ function setDone(){
     else cue(cx.upFirst?cx.cues[1]:cx.cues[0],cx.upFirst?'up':'','Série '+cRun.set+'.');
   },1000);
 }
-function finishCoach(){ const tot=cReps*cSets; stopCoach(true); cue('Bravo ! '+tot+' '+cx.short,'up','Bravo, c’est terminé !'); flash(true); if(sndOn) setTimeout(()=>chime(true),350); }
+function nextExercise(nx){
+  cRun.resting=true; let r=30; cRun.done=(cRun.done||0)+cReps*cSets;
+  flash(); if(sndOn) chime();
+  cue('Ensuite : '+nx.n+' · '+fmt(r),'idle','Bravo ! Ensuite, '+nx.n+'. 30 secondes de repos.');
+  cRun.iv=setInterval(()=>{ r--; if(r<=3&&r>0) beep(660,.08);
+    if(r>0){ cue('Ensuite : '+nx.n+' · '+fmt(r),'idle'); return; }
+    clearInterval(cRun.iv);
+    cx=nx; cReps=nx.reps; cRun.set=1; cRun.n=0; cRun.stage='A'; cRun.min=999; cRun.resting=false;
+    document.querySelectorAll('#cEx button').forEach(b=>b.setAttribute('aria-pressed',b.textContent===cx.n));
+    $('cReps').textContent=cReps+' rép.'; $('cOf').textContent='/'+cReps; $('cLbl').textContent=cx.n; $('cTip').innerHTML='<b>Avec la caméra :</b> '+cx.tip;
+    $('cN').textContent='0'; $('cSet').textContent=cSets>1?'Série 1/'+cSets:''; $('cPic').innerHTML=icon(cx.ico,'big'); dot(!!cx.upFirst,0);
+    if(cRun.kind==='cam') msg('Place-toi pour : '+cx.tip);
+    beep(880,.25);
+    if(cRun.kind==='guide'){ cue(cx.n,'idle',cx.n+'. '+cReps+' '+cx.short+'.'); later(guideRep,2200); }
+    else cue(cx.upFirst?cx.cues[1]:cx.cues[0],cx.upFirst?'up':'',cx.n+'. '+cReps+' '+cx.short+'.');
+  },1000);
+}
+function finishCoach(){ const chained=cRun&&cRun.done; const tot=cReps*cSets+(chained||0); stopCoach(true); cue(chained?'Bravo ! Circuit terminé':'Bravo ! '+tot+' '+cx.short,'up','Bravo, c’est terminé !'); flash(true); if(sndOn) setTimeout(()=>chime(true),350); }
 function stopStream(){ try{ stream&&stream.getTracks().forEach(t=>t.stop()); }catch(e){} stream=null; const v=$('cVid'); v.srcObject=null; v.closest('.stage').style.aspectRatio=''; v.hidden=true; $('cCan').hidden=true; $('cPic').hidden=false; $('cTrack').hidden=false; }
 function stopCoach(keep){
   if(!cRun) return;
@@ -863,6 +912,16 @@ async function getCam(){
   return st;
 }
 function fitStage(v){ const fit=()=>{ if(v.videoWidth&&v.videoHeight){ const st=v.closest('.stage'); if(st) st.style.aspectRatio=v.videoWidth+'/'+v.videoHeight; } }; v.addEventListener('loadedmetadata',fit); v.addEventListener('resize',fit); fit(); }
+// plein écran : overlay CSS (iPhone) + API Fullscreen quand elle existe
+var fsEl=null;
+function fsLabel(){ ['cFs','tFs'].forEach(id=>{ const b=$(id); if(b) b.textContent=fsEl&&fsEl.id===b.dataset.target?'✕ Quitter le plein écran':'⛶ Plein écran'; }); }
+function enterFs(el){ if(fsEl) exitFs(); fsEl=el; el.classList.add('fsmode'); document.body.classList.add('fs-on'); fsLabel();
+  try{ const r=document.documentElement; if(r.requestFullscreen) r.requestFullscreen().catch(()=>{}); else if(r.webkitRequestFullscreen) r.webkitRequestFullscreen(); }catch(e){} }
+function exitFs(){ if(!fsEl) return; fsEl.classList.remove('fsmode'); document.body.classList.remove('fs-on'); fsEl=null; fsLabel();
+  try{ if(document.fullscreenElement&&document.exitFullscreen) document.exitFullscreen().catch(()=>{}); else if(document.webkitFullscreenElement&&document.webkitExitFullscreen) document.webkitExitFullscreen(); }catch(e){} }
+['cFs','tFs'].forEach(id=>$(id).addEventListener('click',()=>{ const el=$($(id).dataset.target); if(fsEl===el) exitFs(); else enterFs(el); }));
+document.addEventListener('fullscreenchange',()=>{ if(!document.fullscreenElement&&fsEl) { fsEl.classList.remove('fsmode'); document.body.classList.remove('fs-on'); fsEl=null; fsLabel(); } });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') exitFs(); });
 function loadScript(src){ return new Promise((ok,ko)=>{ const s=document.createElement('script'); s.src=src; s.crossOrigin='anonymous'; s.onload=ok; s.onerror=()=>ko(new Error('script')); document.head.appendChild(s); }); }
 function camFail(t){ msg(t+' Le mode guidé fonctionne sans caméra.'); }
 $('cCam').addEventListener('click',async()=>{
