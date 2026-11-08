@@ -156,9 +156,9 @@ ul.clean{margin:0;padding-left:18px;display:grid;gap:4px}
 .stage .pic .ico .prop{stroke:#6F7D76}
 .track{position:absolute;right:22px;top:50%;width:10px;height:150px;margin-top:-75px;border-radius:99px;background:rgba(255,255,255,.15)}
 .track i{position:absolute;left:-6px;top:0;width:22px;height:22px;border-radius:50%;background:var(--gold);transition-property:top;transition-timing-function:ease-in-out}
-.cnt{position:absolute;top:14px;left:14px;z-index:2;background:rgba(0,0,0,.62);color:#fff;border-radius:14px;padding:10px 14px 8px;display:grid;justify-items:center;line-height:1;min-width:84px}
-.cnt b{font-family:var(--display);font-size:3.4rem;font-weight:700;font-variant-numeric:tabular-nums}
-.cnt span{font-family:var(--display);font-size:1.1rem;opacity:.75}
+.cnt{position:absolute;top:12px;left:12px;z-index:2;background:rgba(0,0,0,.7);color:#fff;border-radius:18px;padding:10px 16px 8px;display:grid;justify-items:center;line-height:1;width:min(38%,200px);min-width:96px;container-type:inline-size;box-shadow:0 4px 18px rgba(0,0,0,.35)}
+.cnt b{font-family:var(--display);font-size:46cqw;font-weight:700;font-variant-numeric:tabular-nums}
+.cnt span{font-family:var(--display);font-size:14cqw;opacity:.8}
 .cnt small{font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;opacity:.75;margin-top:5px;max-width:110px;text-align:center}
 .cnt.pop b{animation:pop .35s ease-out}
 @keyframes pop{50%{transform:scale(1.3);color:#E9B04A}}
@@ -275,16 +275,21 @@ ol.steps li.done .dur::after{content:" ✓";color:var(--accent)}
 .macro{display:flex;gap:8px;flex-wrap:wrap}
 .macro span{background:var(--sunk);border-radius:999px;padding:4px 10px;font-size:.85rem}
 /* pictogramme de l'exercice sur l'image de la caméra */
-.meter{position:absolute;top:10px;right:10px;z-index:3;width:116px;height:116px;border-radius:50%;background:rgba(0,0,0,.62);display:grid;place-items:center}
+.meter{position:absolute;top:10px;right:10px;z-index:3;width:min(44%,240px);min-width:112px;aspect-ratio:1;height:auto;container-type:inline-size;border-radius:50%;background:rgba(0,0,0,.7);display:grid;place-items:center;box-shadow:0 4px 18px rgba(0,0,0,.35)}
 .meter svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)}
 .meter .mtrack{fill:none;stroke:rgba(255,255,255,.18);stroke-width:8}
 .meter .mring{fill:none;stroke:#2FD27A;stroke-width:8;stroke-linecap:round;stroke-dasharray:276.5;stroke-dashoffset:276.5;transition:stroke-dashoffset .3s linear,stroke .3s}
 .meter.warn .mring{stroke:#E9B04A}
 .meter .mval{position:relative;display:grid;justify-items:center;color:#fff;line-height:1}
-.meter .mval b{font-family:var(--display);font-size:2.6rem;font-weight:700;font-variant-numeric:tabular-nums}
-.meter .mval small{font-size:.66rem;text-transform:uppercase;letter-spacing:.06em;opacity:.85;margin-top:2px;text-align:center;max-width:84px}
+.meter .mval b{font-family:var(--display);font-size:38cqw;font-weight:700;font-variant-numeric:tabular-nums}
+.meter .mval i{font-style:normal;font-family:var(--display);font-weight:600;font-size:11cqw;opacity:.85;margin-top:2px}
+.meter .mval small{font-size:8cqw;text-transform:uppercase;letter-spacing:.06em;opacity:.85;margin-top:2px;text-align:center;max-width:84px}
 .meter.pop .mval b{animation:pop .35s ease-out}
-.fsmode .meter{width:150px;height:150px}.fsmode .meter .mval b{font-size:3.4rem}
+.fsmode .meter{width:min(48%,280px)}
+.meter .mring{stroke-width:9}
+.meter.wait{animation:waitp 1.2s ease-in-out infinite}.meter.wait .mring{stroke:#E9B04A}
+@keyframes waitp{50%{box-shadow:0 0 0 6px rgba(233,176,74,.55)}}
+@media (prefers-reduced-motion:reduce){.meter.wait{animation:none}}
 #tExIco{left:12px;right:auto}
 .exico{position:absolute;top:12px;right:12px;z-index:2;background:rgba(0,0,0,.62);color:#fff;border-radius:14px;padding:6px 8px 7px;display:grid;justify-items:center;gap:2px;width:96px}
 .exico .ico{width:64px;height:64px;stroke:#fff}
@@ -581,7 +586,7 @@ body.fs-on{overflow:hidden}
           <div class="exico" id="tExIco"></div>
           <div class="meter" id="tMeter" hidden>
             <svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="44" class="mtrack"/><circle cx="50" cy="50" r="44" class="mring" id="tRing"/></svg>
-            <div class="mval"><b id="tMv">0</b><small id="tMl">s tenues</small></div>
+            <div class="mval"><b id="tMv">0</b><i id="tMg"></i><small id="tMl">s tenues</small></div>
           </div>
           <div class="cue idle" id="tCue">Mets-toi dans l’image</div>
         </div>
@@ -1420,7 +1425,7 @@ async function tLoop(){
   if(v.readyState>=2&&!busy){ busy=true; try{ await pose.send({image:v}); }catch(e){} busy=false; }
   requestAnimationFrame(tLoop);
 }
-function meterSet(v,label,frac,warn){ const m=$('tMeter'); m.hidden=false; const b=$('tMv'); if(b.textContent!==String(v)){ b.textContent=v; }
+function meterSet(v,label,frac,warn,goal){ const m=$('tMeter'); m.hidden=false; $('tMg').textContent=goal||''; m.classList.toggle('wait',waiting); const b=$('tMv'); if(b.textContent!==String(v)){ b.textContent=v; }
   $('tMl').textContent=label; $('tRing').style.strokeDashoffset=String(276.5*(1-Math.max(0,Math.min(1,frac)))); m.classList.toggle('warn',!!warn); }
 function meterPop(){ const m=$('tMeter'); m.classList.remove('pop'); void m.offsetWidth; m.classList.add('pop'); }
 // minuteur en attente si la caméra ne voit pas l'exercice se faire
@@ -1451,11 +1456,11 @@ function onPoseT(r){
   if(kind.k==='reps'){
     $('tCnt').hidden=true; st.classList.remove('live');
     poseActive=(motion*100>0.25)||(now-(tSt.lastRep||0)<4000);
-    meterSet(tSt.n,'répétitions',elapsedFrac,!poseActive);
+    meterSet(tSt.n,'répétitions',elapsedFrac,!poseActive,fmt(left)+' restant');
     const ang=angleAt(L,kind.joint,W/H);
     if(ang==null){ poseActive=false; tcue('Recule : corps entier visible','idle'); return; }
     if(tSt.stage==='A'){ if(ang<kind.down){ tSt.stage='B'; tcue(kind.cues[1],'up'); } else tcue(kind.cues[0],''); }
-    else if(ang>kind.up){ tSt.stage='A'; tSt.n++; tSt.lastRep=now; poseActive=true; $('tN').textContent=tSt.n; meterSet(tSt.n,'répétitions',elapsedFrac,false); meterPop(); st.classList.remove('win'); void st.offsetWidth; st.classList.add('win'); chime(); speak(String(tSt.n),false); tcue(kind.cues[0],''); }
+    else if(ang>kind.up){ tSt.stage='A'; tSt.n++; tSt.lastRep=now; poseActive=true; $('tN').textContent=tSt.n; meterSet(tSt.n,'répétitions',elapsedFrac,false,fmt(left)+' restant'); meterPop(); st.classList.remove('win'); void st.offsetWidth; st.classList.add('win'); chime(); speak(String(tSt.n),false); tcue(kind.cues[0],''); }
     return;
   }
   $('tCnt').hidden=true;
@@ -1465,7 +1470,7 @@ function onPoseT(r){
   if(ok) tSt.sec+=dt;
   const secs=Math.floor(tSt.sec);
   if(secs>=tSt.mile+10){ tSt.mile=secs-secs%10; meterPop(); if(sndOn) chime(); }
-  meterSet(secs,kind.k==='move'?'s en mouvement':'s tenues',s.t?tSt.sec/s.t:0,!ok);
+  meterSet(secs,waiting?'en attente':(kind.k==='move'?'s en mouvement':'s tenues'),s.t?tSt.sec/s.t:0,!ok,'/ '+s.t+' s');
   st.classList.toggle('live',ok);
   if(kind.k==='move') tcue(ok?'Super, continue !':'Bouge un peu plus',ok?'':'up');
   else tcue(ok?'Tiens la position, respire':'Reste immobile',ok?'':'up');
