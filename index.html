@@ -537,9 +537,9 @@ function dayPts(k){const e=state.days[k]||{};return HABITS.reduce((s,h)=>s+(e[h.
 /* ---------- tabs ---------- */
 const tabs=[...document.querySelectorAll('nav .tabs button')];
 function goFor(id,wd){
-  const open=(m)=>()=>{ show('reveil'); setMode(m); window.scrollTo({top:0,behavior:'smooth'}); };
-  if(id==='reveil') return {txt:'Lancer',aria:'Lancer la routine du réveil',run:open('reveil')};
-  if(id==='etirements') return {txt:'Lancer',aria:'Lancer les étirements',run:open('etirements')};
+  const open=(m,start)=>()=>{ show('reveil'); setMode(m); window.scrollTo({top:0,behavior:'smooth'}); if(start&&!running) $('tStart').click(); };
+  if(id==='reveil') return {txt:'Lancer',aria:'Lancer la routine du réveil',run:open('reveil',true)};
+  if(id==='etirements') return {txt:'Lancer',aria:'Lancer les étirements',run:open('etirements',true)};
   if(id==='seance'){
     if(PLAN[wd].t.indexOf('Forest Hill')>=0) return {txt:'Voir',aria:'Voir la séance au club',run:()=>{ show('semaine'); window.scrollTo({top:0,behavior:'smooth'}); }};
     return {txt:'Lancer',aria:'Ouvrir le compteur de répétitions',run:open('coach')};
@@ -582,7 +582,7 @@ function renderHabits(){
     const planned = hb.planned && PLAN[wd].key;
     const go= k===TODAY ? goFor(hb.id,wd) : null;
     lab.innerHTML='<input type="checkbox" id="'+id+'"'+(e[hb.id]?' checked':'')+'>'+icon(hb.ico)+'<span class="t">'+hb.label+(planned?'<span class="tag">prévue</span>':'')+'<small>'+(hb.planned&&PLAN[wd].key?PLAN[wd].t:hb.sub)+'</small></span>'+(go?'<button type="button" class="go" aria-label="'+go.aria+'">'+(e[hb.id]?'Refaire':go.txt)+'</button>':'')+'<span class="pts">+'+hb.pts+'</span>';
-    if(go) lab.querySelector('.go').addEventListener('click',ev=>{ ev.preventDefault(); ev.stopPropagation(); go.run(); });
+    if(go) lab.addEventListener('click',ev=>{ if(ev.target.tagName==='INPUT') return; ev.preventDefault(); go.run(); });
     lab.querySelector('input').addEventListener('change',ev=>{
       const d=state.days[k]||(state.days[k]={}); if(ev.target.checked) d[hb.id]=1; else delete d[hb.id];
       if(!Object.keys(d).length) delete state.days[k];
