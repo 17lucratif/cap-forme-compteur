@@ -1163,13 +1163,13 @@ function finish(){
   const d=state.days[TODAY]||(state.days[TODAY]={}); d[M.habit]=1; save(); renderAll(); beep(1046,.6);
   if(tCamOn){ const st=$('tStage'); st.classList.remove('live'); st.classList.add('done'); $('tCnt').hidden=true; tcue('Bravo, c’est fait !','up'); }
 }
-function stop(){ running=false; clearInterval(tick); tick=null; $('tStart').textContent='Démarrer'; $('tSkip').disabled=true; $('tReset').disabled=true; try{wake&&wake.release()}catch(e){} wake=null; }
+function stop(){ waiting=false; $('tClock').classList.remove('rest'); running=false; clearInterval(tick); tick=null; $('tStart').textContent='Démarrer'; $('tSkip').disabled=true; $('tReset').disabled=true; try{wake&&wake.release()}catch(e){} wake=null; }
 function resetTimer(){ stop(); $('tIco').innerHTML=icon(curEx()[0].ico,'big faint'); $('tPhase').textContent='Prêt'; $('tNow').textContent='Appuyez sur Démarrer'; $('tClock').textContent='0:00'; $('tClock').classList.remove('rest'); $('tNext').textContent=''; renderSteps(-1); }
 $('tStart').addEventListener('click',async()=>{
   try{ if(!actx){const C=window.AudioContext||window.webkitAudioContext; if(C) actx=new C();} }catch(e){}
   if(!running){ S=seq(); running=true; paused=false; $('tStage').classList.remove('done'); go(0); if(tCamPref&&!tCamOn) camOn();
     try{ if(navigator.wakeLock) wake=await navigator.wakeLock.request('screen'); }catch(e){}
-    tick=setInterval(()=>{ if(paused) return; left--; const s=S[idx];
+    tick=setInterval(()=>{ if(paused) return; if(camWait()){ markWait(true); return; } markWait(false); left--; const s=S[idx];
       if(s.sides&&left===s.t/2){ beep(990,.3); paint(); }
       if(left<=3&&left>0) beep(660,.08);
       if(left<=0) go(idx+1); else $('tClock').textContent=fmt(left); },1000);
@@ -1423,12 +1423,17 @@ async function tLoop(){
 function meterSet(v,label,frac,warn){ const m=$('tMeter'); m.hidden=false; const b=$('tMv'); if(b.textContent!==String(v)){ b.textContent=v; }
   $('tMl').textContent=label; $('tRing').style.strokeDashoffset=String(276.5*(1-Math.max(0,Math.min(1,frac)))); m.classList.toggle('warn',!!warn); }
 function meterPop(){ const m=$('tMeter'); m.classList.remove('pop'); void m.offsetWidth; m.classList.add('pop'); }
+// minuteur en attente si la caméra ne voit pas l'exercice se faire
+let poseT=0, poseActive=true, waiting=false;
+function camWait(){ if(typeof tCamOn==='undefined'||!tCamOn) return false; const s=S[idx]; if(!s||s.rest) return false; if(performance.now()-poseT>1500) return false; return !poseActive; }
+function markWait(on){ if(on===waiting) return; waiting=on; $('tClock').classList.toggle('rest',on); if(on){ $('tNext').textContent='⏸ Minuteur en attente : fais l’exercice pour qu’il reparte'; } else if(running) paint(); }
 function onPoseT(r){
+  poseT=performance.now();
   const v=$('tVid'), c=$('tCan'), W=v.videoWidth||640, H=v.videoHeight||480, st=$('tStage');
   if(c.width!==W) c.width=W; if(c.height!==H) c.height=H;
   const g=c.getContext('2d'); g.clearRect(0,0,W,H);
   const L=r.poseLandmarks, s=running?S[idx]:null;
-  if(!L){ tcue('Mets-toi dans l’image','idle'); st.classList.remove('live'); return; }
+  if(!L){ poseActive=false; tcue('Mets-toi dans l’image','idle'); st.classList.remove('live'); return; }
   const kind=!s||s.rest?null:(mode==='reveil'?(CAMK[s.ico]||{k:'move'}):{k:'hold'});
   const used=kind&&kind.joint?JOINTS[kind.joint].flat():[];
   g.lineCap='round'; g.lineWidth=Math.max(4,W/110); g.strokeStyle='rgba(255,255,255,.92)'; g.shadowColor='rgba(0,0,0,.5)'; g.shadowBlur=6;
@@ -1438,22 +1443,25 @@ function onPoseT(r){
   if(prevL&&ids.length){ let d=0; ids.forEach(i=>{ d+=Math.hypot(L[i].x-prevL[i].x,L[i].y-prevL[i].y); }); motion=motion*.85+(d/ids.length)*.15; }
   prevL=L.map(p=>({x:p.x,y:p.y}));
   if(!s){ st.classList.remove('live'); if(!st.classList.contains('done')) tcue('Prêt : touche Démarrer','idle'); $('tCnt').hidden=true; $('tMeter').hidden=true; return; }
-  if(s.rest||paused){ tcue(paused?'Pause':(mode==='reveil'?'Récupère':'Mets-toi en place'),'idle'); st.classList.remove('live'); $('tCnt').hidden=true; $('tMeter').hidden=true; tSt.lastT=0; return; }
-  if(ids.length<4){ tcue('Recule : corps entier visible','idle'); st.classList.remove('live'); return; }
+  if(s.rest||paused){ poseActive=true; tcue(paused?'Pause':(mode==='reveil'?'Récupère':'Mets-toi en place'),'idle'); st.classList.remove('live'); $('tCnt').hidden=true; $('tMeter').hidden=true; tSt.lastT=0; return; }
+  if(ids.length<4){ poseActive=false; tcue('Recule : corps entier visible','idle'); st.classList.remove('live'); return; }
   if(tSt.idx!==idx){ tSt={idx,n:0,stage:'A',sec:0,lastT:0,mile:0}; $('tN').textContent='0'; }
   const now=performance.now(), dt=tSt.lastT?Math.min(0.5,(now-tSt.lastT)/1000):0; tSt.lastT=now;
   const elapsedFrac=s.t?(s.t-left)/s.t:0;
   if(kind.k==='reps'){
-    $('tCnt').hidden=true; st.classList.remove('live'); meterSet(tSt.n,'répétitions',elapsedFrac,false);
+    $('tCnt').hidden=true; st.classList.remove('live');
+    poseActive=(motion*100>0.25)||(now-(tSt.lastRep||0)<4000);
+    meterSet(tSt.n,'répétitions',elapsedFrac,!poseActive);
     const ang=angleAt(L,kind.joint,W/H);
-    if(ang==null){ tcue('Recule : corps entier visible','idle'); return; }
+    if(ang==null){ poseActive=false; tcue('Recule : corps entier visible','idle'); return; }
     if(tSt.stage==='A'){ if(ang<kind.down){ tSt.stage='B'; tcue(kind.cues[1],'up'); } else tcue(kind.cues[0],''); }
-    else if(ang>kind.up){ tSt.stage='A'; tSt.n++; $('tN').textContent=tSt.n; meterSet(tSt.n,'répétitions',elapsedFrac,false); meterPop(); st.classList.remove('win'); void st.offsetWidth; st.classList.add('win'); chime(); speak(String(tSt.n),false); tcue(kind.cues[0],''); }
+    else if(ang>kind.up){ tSt.stage='A'; tSt.n++; tSt.lastRep=now; poseActive=true; $('tN').textContent=tSt.n; meterSet(tSt.n,'répétitions',elapsedFrac,false); meterPop(); st.classList.remove('win'); void st.offsetWidth; st.classList.add('win'); chime(); speak(String(tSt.n),false); tcue(kind.cues[0],''); }
     return;
   }
   $('tCnt').hidden=true;
   const M=motion*100;
   const ok=kind.k==='move'?M>0.35:M<0.22;
+  poseActive=ok;
   if(ok) tSt.sec+=dt;
   const secs=Math.floor(tSt.sec);
   if(secs>=tSt.mile+10){ tSt.mile=secs-secs%10; meterPop(); if(sndOn) chime(); }
