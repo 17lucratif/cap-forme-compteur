@@ -214,14 +214,19 @@ ol.board small{display:block;color:var(--muted);font-size:.8rem}
 .topk .fill::after{content:"";position:absolute;inset:0;border-radius:999px;background:linear-gradient(180deg,rgba(255,255,255,.28),rgba(255,255,255,0) 60%)}
 .topk .txt{position:relative;z-index:1;text-shadow:0 1px 0 rgba(255,255,255,.45);display:flex;justify-content:space-between;align-items:center;height:100%;padding:0 12px;font-family:var(--display);font-weight:700;font-size:1rem;letter-spacing:.02em;color:var(--fg);font-variant-numeric:tabular-nums}
 .topk .txt small{font-weight:600;opacity:.8}
-.needs{display:grid;gap:10px}
-.need{display:grid;grid-template-columns:86px 1fr auto;gap:10px;align-items:center}
-.need .nl{font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;font-weight:700;color:var(--muted)}
-.need .nv{font-family:var(--display);font-weight:600;font-size:1.05rem;font-variant-numeric:tabular-nums;white-space:nowrap}
-.need .nv small{color:var(--muted);font-weight:500}
-.need .kbar{height:12px}
-.need.p .kbar i{background:#C0569A}.need.g .kbar i{background:var(--gold)}.need.l .kbar i{background:#3E86C6}
-.need .kbar.over i{background:var(--warn)!important}
+.needs{display:grid;gap:8px}
+.pbar{position:relative;height:30px;border-radius:999px;background:var(--sunk);box-shadow:inset 0 0 0 1px var(--line);overflow:hidden}
+.pbar .fill{position:absolute;inset:0 auto 0 0;width:0%;border-radius:999px;transition:width .6s ease}
+.pbar .fill::after{content:"";position:absolute;inset:0;border-radius:999px;background:linear-gradient(180deg,rgba(255,255,255,.28),rgba(255,255,255,0) 60%)}
+.pbar .txt{position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center;gap:8px;height:100%;padding:0 12px;font-family:var(--display);font-weight:700;font-size:.98rem;color:var(--fg);font-variant-numeric:tabular-nums;text-shadow:0 1px 0 rgba(255,255,255,.45);white-space:nowrap}
+.pbar .txt small{font-weight:600;opacity:.8}
+.pbar.k .fill{background:linear-gradient(90deg,#2C8A5E,#3FB27A)}
+.pbar.k.mid .fill{background:linear-gradient(90deg,#3FB27A,#D9A62E)}
+.pbar.k.high .fill{background:linear-gradient(90deg,#D9A62E,#E07B2E)}
+.pbar.p .fill{background:linear-gradient(90deg,#B04A8C,#D477B0)}
+.pbar.g .fill{background:linear-gradient(90deg,#C98A1B,#E9B04A)}
+.pbar.l .fill{background:linear-gradient(90deg,#2F6FA8,#5C9BD6)}
+.pbar.over .fill{background:linear-gradient(90deg,#E07B2E,#C4453A)!important}
 .meals{list-style:none;margin:0;padding:0;display:grid;gap:6px}
 .meals li{display:grid;grid-template-columns:44px 1fr auto auto;gap:8px;align-items:center;padding:8px 10px;border-radius:10px;background:var(--sunk);font-size:.92rem}
 .meals .h{font-family:var(--display);font-weight:600;color:var(--muted)}
@@ -838,7 +843,8 @@ function renderKcal(){
   const ms=todayMeals(), tot=ms.reduce((a,m)=>a+(+m.kcal||0),0), b=besoin();
   $('kcalTot').textContent=tot+(b?' / '+b.cible:'')+' kcal';
   const sum=f=>ms.reduce((a,m)=>a+(+m[f]||0),0), P=sum('p'), G=sum('g'), Li=sum('l');
-  const row=(cls,lab,v,t,u)=>'<div class="need '+cls+'"><span class="nl">'+lab+'</span><div class="kbar'+(v>t*1.05?' over':'')+'"><i style="width:'+Math.min(100,t?v/t*100:0)+'%"></i></div><span class="nv">'+v+' <small>/ '+t+' '+u+'</small></span></div>';
+  const row=(cls,lab,v,t,u)=>{ const pc=t?Math.round(v/t*100):0; const st=pc>105?' over':cls==='k'?(pc>=90?' high':pc>=60?' mid':''):'';
+    return '<div class="pbar '+cls+st+'" role="progressbar" aria-label="'+lab+'" aria-valuemin="0" aria-valuemax="'+t+'" aria-valuenow="'+v+'"><span class="fill" style="width:'+Math.min(100,pc)+'%"></span><span class="txt"><span>'+lab+' · '+v+' / '+t+' '+u+'</span><small>'+(pc>100?'+'+(v-t)+' '+u:pc+' %')+'</small></span></div>'; };
   $('needs').innerHTML=b?row('k','Calories',tot,b.cible,'kcal')+row('p','Protéines',P,b.prot,'g')+row('g','Glucides',G,b.glu,'g')+row('l','Lipides',Li,b.lip,'g')
     +(ms.some(m=>m.p==null)?'<p class="note" style="margin:0">Les repas ajoutés à la main ne comptent que dans les calories.</p>':''):'';
   $('kcalBody').innerHTML=b?'<p class="note" style="margin:0">'+(tot<=b.cible?'Il reste environ <b>'+(b.cible-tot)+' kcal</b> pour aujourd’hui.':'Objectif dépassé de '+(tot-b.cible)+' kcal : pas grave, on équilibre sur la semaine.')+'</p>'
