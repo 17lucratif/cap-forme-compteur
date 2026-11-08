@@ -272,7 +272,7 @@ body.fs-on{overflow:hidden}
   <header>
     <h1>Cap Forme<small id="subtitle">Hygiène de vie · challenge de la semaine</small></h1>
     <div style="display:grid;justify-items:end;gap:6px">
-      <div style="display:flex;gap:8px;align-items:center"><div class="streak" id="streak">Série <b>0</b> j</div><button class="photobtn" id="hdrPhoto" hidden aria-label="Photographier mon repas" title="Photographier mon repas">📷</button></div>
+      <div style="display:flex;gap:8px;align-items:center"><div class="streak" id="streak">Série <b>0</b> j</div><button class="photobtn" id="hdrPhoto" hidden aria-label="Analyser mon assiette avec Claude" title="Analyser mon assiette avec Claude">📷</button></div>
       <input type="file" id="mealFile" accept="image/*" capture="environment" hidden>
       <div class="who" id="who" hidden><b id="whoName"></b> · <button class="link" id="logout">Déconnexion</button></div>
     </div>
@@ -375,7 +375,7 @@ body.fs-on{overflow:hidden}
       <div class="kbar" id="kcalBar"><i style="width:0%"></i></div>
       <ul class="meals" id="meals"></ul>
       <div class="row">
-        <button class="btn" id="kPhoto" hidden>📷 Photo du repas</button>
+        <button class="btn" id="kPhoto" hidden>📷 Photo avec Claude</button>
         <button class="btn ghost" id="kAdd">+ Ajouter à la main</button>
       </div>
       <form id="kForm" class="row" hidden>
@@ -1317,7 +1317,7 @@ function render(){
   $('auth').hidden=!!me; $('pseudoCard').hidden=!(me&&!me.pseudo); $('app').hidden=!inApp||!$('newPass').hidden; $('who').hidden=!me;
   $('boardCard').hidden=!inApp;
   if(me){ $('whoName').textContent=me.pseudo||me.email; }
-  if(inApp){ uid=me.id; loadState(); syncLevel(); renderAll(); renderCoach(); loadBoard(); sendQueue(); pullRemote(); }
+  if(inApp){ uid=me.id; loadState(); syncLevel(); renderAll(); renderCoach(); loadBoard(); sendQueue(); pullRemote().then(offerPending); }
 }
 function syncLevel(){ lvl=state.level||0; document.querySelectorAll('#lvl button').forEach(x=>x.setAttribute('aria-pressed',+x.dataset.l===lvl)); if(mode!=='coach') renderSteps(-1); }
 async function pullRemote(){
@@ -1346,8 +1346,28 @@ remoteSave=async()=>{ if(!sb||!me||!me.pseudo) return; try{ await sb.from('etat'
 let mealRes=null;
 function momentRepas(){ const h=new Date().getHours(); return h<11?'petit-déjeuner':h<15?'déjeuner':h<18?'goûter':'dîner'; }
 function openSheet(){ $('mealSheet').hidden=false; document.body.classList.add('fs-on'); }
-function closeSheet(){ $('mealSheet').hidden=true; document.body.classList.remove('fs-on'); mealRes=null; $('mealFile').value=''; }
-['hdrPhoto','kPhoto'].forEach(id=>$(id).addEventListener('click',()=>{ if(me&&me.id===OWNER) $('mealFile').click(); }));
+function closeSheet(){ $('msImg').hidden=false; $('mealSheet').hidden=true; document.body.classList.remove('fs-on'); mealRes=null; $('mealFile').value=''; }
+// la photo est analysée dans Cap Forme sur Claude (compte Claude du propriétaire, sans clé API)
+const CLAUDE_APP='https://claude.ai/artifact/4ktNYLCc7YhosPNBfeiCsP';
+['hdrPhoto','kPhoto'].forEach(id=>$(id).addEventListener('click',()=>{ if(me&&me.id===OWNER) window.open(CLAUDE_APP,'_blank','noopener'); }));
+// repas renvoyé depuis Claude : #repas={...} — on demande confirmation avant d'ajouter
+let pendingMeal=null;
+(function(){ const m=(location.hash||'').match(/^#repas=(.+)$/); if(!m) return;
+  try{ const o=JSON.parse(decodeURIComponent(m[1]));
+    const k=Math.round(+o.kcal), n=String(o.nom||'Repas').slice(0,60);
+    if(k>=10&&k<=4000) pendingMeal={nom:n,kcal:k,p:Math.max(0,Math.round(+o.p||0)),g:Math.max(0,Math.round(+o.g||0)),l:Math.max(0,Math.round(+o.l||0)),src:'photo'};
+  }catch(e){}
+  history.replaceState(null,'',location.pathname+location.search);
+})();
+function offerPending(){
+  if(!pendingMeal) return; const m=pendingMeal; pendingMeal=null; mealRes={nom:m.nom,kcal:m.kcal,proteines:m.p,glucides:m.g,lipides:m.l};
+  const b=besoin(), deja=todayMeals().reduce((a,x)=>a+(+x.kcal||0),0);
+  $('msImg').hidden=true; openSheet();
+  $('msOut').innerHTML='<p class="muted" style="margin:0">Repas analysé par Claude :</p><h3 style="margin:0">'+esc(m.nom)+'</h3><span class="num" style="font-size:2.2rem;font-weight:700">'+m.kcal+' kcal</span>'+
+    '<div class="macro"><span>Protéines '+m.p+' g</span><span>Glucides '+m.g+' g</span><span>Lipides '+m.l+' g</span></div>'+
+    (b?'<p style="margin:0">Après ce repas, '+(b.cible-deja-m.kcal>=0?'il te restera environ <b>'+(b.cible-deja-m.kcal)+' kcal</b>':'tu dépasses ton objectif de <b>'+(m.kcal+deja-b.cible)+' kcal</b>')+' sur '+b.cible+'.</p>':'');
+  $('msActs').hidden=false;
+}
 $('msClose').addEventListener('click',closeSheet); $('msCancel').addEventListener('click',closeSheet);
 $('mealSheet').addEventListener('click',e=>{ if(e.target.id==='mealSheet') closeSheet(); });
 async function shrink(file){
