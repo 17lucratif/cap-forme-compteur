@@ -151,7 +151,7 @@ ul.clean{margin:0;padding-left:18px;display:grid;gap:4px}
 .err{color:var(--warn);font-weight:600}
 /* coach / compteur */
 .stage{position:relative;aspect-ratio:3/4;max-height:64vh;width:100%;margin:0 auto;background:#0F1512;border-radius:16px;overflow:hidden;display:grid;place-items:center}
-.stage video,.stage canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
+.stage video,.stage canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;transform:scaleX(-1)}
 .stage .pic .ico{width:170px;height:170px;stroke:#E7EEE9}
 .stage .pic .ico .prop{stroke:#6F7D76}
 .track{position:absolute;right:22px;top:50%;width:10px;height:150px;margin-top:-75px;border-radius:99px;background:rgba(255,255,255,.15)}
@@ -842,7 +842,7 @@ function setDone(){
   },1000);
 }
 function finishCoach(){ const tot=cReps*cSets; stopCoach(true); cue('Bravo ! '+tot+' '+cx.short,'up','Bravo, c’est terminé !'); flash(true); if(sndOn) setTimeout(()=>chime(true),350); }
-function stopStream(){ try{ stream&&stream.getTracks().forEach(t=>t.stop()); }catch(e){} stream=null; const v=$('cVid'); v.srcObject=null; v.hidden=true; $('cCan').hidden=true; $('cPic').hidden=false; $('cTrack').hidden=false; }
+function stopStream(){ try{ stream&&stream.getTracks().forEach(t=>t.stop()); }catch(e){} stream=null; const v=$('cVid'); v.srcObject=null; v.closest('.stage').style.aspectRatio=''; v.hidden=true; $('cCan').hidden=true; $('cPic').hidden=false; $('cTrack').hidden=false; }
 function stopCoach(keep){
   if(!cRun) return;
   flushRun(); cRun.t.forEach(clearTimeout); clearInterval(cRun.iv); cRun=null;
@@ -854,15 +854,24 @@ function stopCoach(keep){
 $('cGuide').addEventListener('click',()=>{ msg(''); startSession('guide'); });
 $('cStop').addEventListener('click',()=>{ stopCoach(); msg(''); });
 $('cPlus').addEventListener('click',()=>{ if(cRun&&!cRun.resting){ count(); cRun.stage='A'; cRun.min=999; } });
+// caméra frontale, image entière et zoom le plus large que le téléphone propose
+async function getCam(){
+  const st=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:1280},height:{ideal:960}},audio:false});
+  try{ const tr=st.getVideoTracks()[0], c=tr.getCapabilities&&tr.getCapabilities();
+    if(c&&c.zoom&&typeof c.zoom.min==='number'){ const cur=(tr.getSettings&&tr.getSettings().zoom)||1; if(c.zoom.min<cur) await tr.applyConstraints({advanced:[{zoom:c.zoom.min}]}); }
+  }catch(e){}
+  return st;
+}
+function fitStage(v){ const fit=()=>{ if(v.videoWidth&&v.videoHeight){ const st=v.closest('.stage'); if(st) st.style.aspectRatio=v.videoWidth+'/'+v.videoHeight; } }; v.addEventListener('loadedmetadata',fit); v.addEventListener('resize',fit); fit(); }
 function loadScript(src){ return new Promise((ok,ko)=>{ const s=document.createElement('script'); s.src=src; s.crossOrigin='anonymous'; s.onload=ok; s.onerror=()=>ko(new Error('script')); document.head.appendChild(s); }); }
 function camFail(t){ msg(t+' Le mode guidé fonctionne sans caméra.'); }
 $('cCam').addEventListener('click',async()=>{
   ensureAudio(); msg('');
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){ camFail('Cette vue ne donne pas accès à la caméra.'); return; }
   $('cCam').disabled=true; msg('Ouverture de la caméra…'); const t0=Date.now();
-  try{ stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:640},height:{ideal:480}},audio:false}); }
+  try{ stream=await getCam(); }
   catch(e){ $('cCam').disabled=false; camFail(e&&e.name==='NotAllowedError'?'Caméra bloquée ('+(Date.now()-t0<600?'par cette vue, sans demande d’autorisation':'autorisation refusée')+').':'Caméra indisponible dans cette vue ('+(e&&e.name||'erreur')+').'); return; }
-  const v=$('cVid'); v.srcObject=stream; v.hidden=false; $('cPic').hidden=true; $('cTrack').hidden=true;
+  const v=$('cVid'); fitStage(v); v.srcObject=stream; v.hidden=false; $('cPic').hidden=true; $('cTrack').hidden=true;
   try{ await v.play(); }catch(e){}
   msg('Chargement du suivi des mouvements (quelques secondes la première fois)…');
   try{
@@ -932,9 +941,9 @@ async function camOn(){
   ensureAudio();
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){ tmsg('La caméra n’est pas disponible ici.'); return false; }
   $('tCam').disabled=true; tmsg('Ouverture de la caméra…');
-  try{ tStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:640},height:{ideal:480}},audio:false}); }
+  try{ tStream=await getCam(); }
   catch(e){ $('tCam').disabled=false; tmsg(e&&e.name==='NotAllowedError'?'Accès à la caméra refusé : autorise-le dans Safari.':'Caméra indisponible.'); return false; }
-  const v=$('tVid'); v.srcObject=tStream; $('tStage').hidden=false; $('tIco').hidden=true;
+  const v=$('tVid'); fitStage(v); v.srcObject=tStream; $('tStage').hidden=false; $('tIco').hidden=true;
   try{ await v.play(); }catch(e){}
   tmsg('Chargement du suivi des mouvements (quelques secondes la première fois)…');
   try{ await ensurePose(); }catch(e){ camOff(); tmsg('Le suivi des mouvements n’a pas pu se charger.'); return false; }
@@ -944,7 +953,7 @@ async function camOn(){
 }
 function camOff(){
   tCamOn=false; try{ tStream&&tStream.getTracks().forEach(t=>t.stop()); }catch(e){} tStream=null;
-  const v=$('tVid'); v.srcObject=null; const st=$('tStage'); st.hidden=true; st.classList.remove('live','win','done');
+  const v=$('tVid'); v.srcObject=null; const st=$('tStage'); st.style.aspectRatio=''; st.hidden=true; st.classList.remove('live','win','done');
   $('tIco').hidden=false; $('tCam').textContent='📷 Avec la caméra'; $('tCam').disabled=false;
 }
 $('tCam').addEventListener('click',async()=>{ if(tCamOn){ camOff(); tmsg(''); setCamPref(false); } else if(await camOn()) setCamPref(true); });
