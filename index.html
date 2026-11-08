@@ -847,6 +847,10 @@ function renderKcal(){
   $('meals').innerHTML=ms.map((m,i)=>'<li><span class="h">'+esc(m.t||'')+'</span><span>'+esc(m.nom||'Repas')+(m.p!=null?'<small>P '+m.p+' g · G '+m.g+' g · L '+m.l+' g</small>':'')+'</span><span class="k">'+(+m.kcal||0)+'</span><button class="x" data-i="'+i+'" aria-label="Retirer">✕</button></li>').join('');
   $('meals').querySelectorAll('button[data-i]').forEach(x=>x.addEventListener('click',()=>{ state.meals[TODAY].splice(+x.dataset.i,1); if(!state.meals[TODAY].length) delete state.meals[TODAY]; save(); renderKcal(); }));
   const own=!!(me&&me.id===OWNER); $('kPhoto').hidden=!own; $('hdrPhoto').hidden=!own;
+  // propriétaire : carte en haut de Jour ; autres comptes : en bas, après les habitudes
+  { const card=$('kcalCard'), sec=$('p-jour'), habits=$('dayTitle').closest('.card');
+    if(own){ if(card.nextElementSibling!==habits) sec.insertBefore(card,habits); }
+    else if(sec.lastElementChild!==card) sec.appendChild(card); }
   const tk=$('topK'); tk.hidden=!own||!b;
   if(own&&b){ const pc=Math.round(tot/b.cible*100); $('topKf').style.width=Math.min(100,pc)+'%';
     tk.classList.toggle('mid',pc>=60&&pc<90); tk.classList.toggle('high',pc>=90&&pc<=100); tk.classList.toggle('over',pc>100);
