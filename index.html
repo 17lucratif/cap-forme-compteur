@@ -202,6 +202,15 @@ ol.board small{display:block;color:var(--muted);font-size:.8rem}
 .stage.live::after{opacity:1;animation:none;border-color:#2FD27A}
 .tstage{width:100%;max-height:72vh;margin:4px 0}
 .stage{max-height:72vh}
+/* pictogramme de l'exercice sur l'image de la caméra */
+.exico{position:absolute;top:12px;right:12px;z-index:2;background:rgba(0,0,0,.62);color:#fff;border-radius:14px;padding:6px 8px 7px;display:grid;justify-items:center;gap:2px;width:96px}
+.exico .ico{width:64px;height:64px;stroke:#fff}
+.exico .ico .prop{stroke:#9AA9A1}
+.exico .ico .dash{stroke:#6CC198}
+.exico small{font-size:.66rem;line-height:1.1;text-align:center;opacity:.9}
+.exico.faint .ico{opacity:.45}
+.fsmode .exico{width:118px}.fsmode .exico .ico{width:84px;height:84px}
+#cExIco:not([hidden])~.setb{top:auto;bottom:70px}
 /* plein écran (overlay, marche aussi sur iPhone) */
 body.fs-on{overflow:hidden}
 .fsmode{position:fixed!important;inset:0;z-index:100;background:#0B100D!important;color:#E7EEE9;border-radius:0!important;margin:0!important;
@@ -352,6 +361,7 @@ body.fs-on{overflow:hidden}
           <div class="pic" id="cPic"></div>
           <div class="track" id="cTrack"><i id="cDot"></i></div>
           <div class="cnt" id="cCnt"><b id="cN">0</b><span id="cOf">/12</span><small id="cLbl">Squats</small></div>
+          <div class="exico" id="cExIco" hidden></div>
           <div class="setb" id="cSet"></div>
           <div class="cue idle" id="cCue">Prêt</div>
         </div>
@@ -379,6 +389,7 @@ body.fs-on{overflow:hidden}
           <video id="tVid" playsinline muted></video>
           <canvas id="tCan"></canvas>
           <div class="cnt" id="tCnt" hidden><b id="tN">0</b><small>répétitions</small></div>
+          <div class="exico" id="tExIco"></div>
           <div class="cue idle" id="tCue">Mets-toi dans l’image</div>
         </div>
         <div class="now" id="tNow">Appuyez sur Démarrer</div>
@@ -754,7 +765,7 @@ function paint(){
   const s=S[idx], n=curEx().length;
   $('tPhase').textContent=s.rest?(mode==='reveil'?'Récupération':'Transition'):((mode==='reveil'?'Exercice ':'Étirement ')+(s.i+1)+' / '+n+(mode==='reveil'&&ROUT[lvl].rounds>1?' · tour '+(s.round+1):''));
   $('tNow').textContent=s.rest?(mode==='reveil'?'Souffler, boire une gorgée':'Se mettre en place'):s.n+sideTxt(s);
-  { const nx0=s.rest?S.slice(idx+1).find(x=>!x.rest):s; $('tIco').innerHTML=nx0?icon(nx0.ico,'big'+(s.rest?' faint':'')):''; }
+  { const nx0=s.rest?S.slice(idx+1).find(x=>!x.rest):s; $('tIco').innerHTML=nx0?icon(nx0.ico,'big'+(s.rest?' faint':'')):''; exIco('tExIco',nx0,s.rest?'Ensuite :':'',s.rest); }
   $('tClock').textContent=fmt(left); $('tClock').classList.toggle('rest',s.rest);
   const nx=S.slice(idx+1).find(x=>!x.rest); $('tNext').textContent=nx?'Ensuite : '+nx.n:'Dernier';
   renderSteps(s.i);
@@ -824,7 +835,7 @@ function renderCoach(){
     b.addEventListener('click',()=>{ if(cRun) return; cx=e; cReps=e.reps; renderCoach(); }); box.appendChild(b); });
   $('cReps').textContent=cReps+' rép.'; $('cSets').textContent=cSets+(cSets>1?' séries':' série');
   $('cOf').textContent='/'+cReps; $('cLbl').textContent=cx.n; $('cTip').innerHTML='<b>Avec la caméra :</b> '+cx.tip;
-  if(!cRun){ $('cN').textContent='0'; $('cPic').innerHTML=icon(cx.ico,'big'); dot(!!cx.upFirst,0); $('cSet').textContent=cSets>1?'Série 1/'+cSets:''; cue('Prêt','idle'); }
+  exIco('cExIco',cx); if(!cRun){ $('cN').textContent='0'; $('cPic').innerHTML=icon(cx.ico,'big'); dot(!!cx.upFirst,0); $('cSet').textContent=cSets>1?'Série 1/'+cSets:''; cue('Prêt','idle'); }
   renderToday();
 }
 function stepper(id,d,min,max,isSets){ $(id).addEventListener('click',()=>{ if(cRun) return; if(isSets) cSets=Math.min(max,Math.max(min,cSets+d)); else cReps=Math.min(max,Math.max(min,cReps+d)); renderCoach(); }); }
@@ -876,14 +887,14 @@ function setDone(){
 function nextExercise(nx){
   cRun.resting=true; let r=30; cRun.done=(cRun.done||0)+cReps*cSets;
   flash(); if(sndOn) chime();
-  cue('Ensuite : '+nx.n+' · '+fmt(r),'idle','Bravo ! Ensuite, '+nx.n+'. 30 secondes de repos.');
+  cue('Ensuite : '+nx.n+' · '+fmt(r),'idle','Bravo ! Ensuite, '+nx.n+'. 30 secondes de repos.'); exIco('cExIco',nx,'Ensuite :',true);
   cRun.iv=setInterval(()=>{ r--; if(r<=3&&r>0) beep(660,.08);
     if(r>0){ cue('Ensuite : '+nx.n+' · '+fmt(r),'idle'); return; }
     clearInterval(cRun.iv);
     cx=nx; cReps=nx.reps; cRun.set=1; cRun.n=0; cRun.stage='A'; cRun.min=999; cRun.resting=false;
     document.querySelectorAll('#cEx button').forEach(b=>b.setAttribute('aria-pressed',b.textContent===cx.n));
     $('cReps').textContent=cReps+' rép.'; $('cOf').textContent='/'+cReps; $('cLbl').textContent=cx.n; $('cTip').innerHTML='<b>Avec la caméra :</b> '+cx.tip;
-    $('cN').textContent='0'; $('cSet').textContent=cSets>1?'Série 1/'+cSets:''; $('cPic').innerHTML=icon(cx.ico,'big'); dot(!!cx.upFirst,0);
+    $('cN').textContent='0'; $('cSet').textContent=cSets>1?'Série 1/'+cSets:''; $('cPic').innerHTML=icon(cx.ico,'big'); exIco('cExIco',cx); dot(!!cx.upFirst,0);
     if(cRun.kind==='cam') msg('Place-toi pour : '+cx.tip);
     beep(880,.25);
     if(cRun.kind==='guide'){ cue(cx.n,'idle',cx.n+'. '+cReps+' '+cx.short+'.'); later(guideRep,2200); }
@@ -891,7 +902,7 @@ function nextExercise(nx){
   },1000);
 }
 function finishCoach(){ const chained=cRun&&cRun.done; const tot=cReps*cSets+(chained||0); stopCoach(true); cue(chained?'Bravo ! Circuit terminé':'Bravo ! '+tot+' '+cx.short,'up','Bravo, c’est terminé !'); flash(true); if(sndOn) setTimeout(()=>chime(true),350); }
-function stopStream(){ try{ stream&&stream.getTracks().forEach(t=>t.stop()); }catch(e){} stream=null; const v=$('cVid'); v.srcObject=null; v.closest('.stage').style.aspectRatio=''; v.hidden=true; $('cCan').hidden=true; $('cPic').hidden=false; $('cTrack').hidden=false; }
+function stopStream(){ try{ stream&&stream.getTracks().forEach(t=>t.stop()); }catch(e){} stream=null; const v=$('cVid'); v.srcObject=null; v.closest('.stage').style.aspectRatio=''; v.hidden=true; $('cCan').hidden=true; $('cPic').hidden=false; $('cTrack').hidden=false; $('cExIco').hidden=true; }
 function stopCoach(keep){
   if(!cRun) return;
   flushRun(); cRun.t.forEach(clearTimeout); clearInterval(cRun.iv); cRun=null;
@@ -922,6 +933,7 @@ function exitFs(){ if(!fsEl) return; fsEl.classList.remove('fsmode'); document.b
 ['cFs','tFs'].forEach(id=>$(id).addEventListener('click',()=>{ const el=$($(id).dataset.target); if(fsEl===el) exitFs(); else enterFs(el); }));
 document.addEventListener('fullscreenchange',()=>{ if(!document.fullscreenElement&&fsEl) { fsEl.classList.remove('fsmode'); document.body.classList.remove('fs-on'); fsEl=null; fsLabel(); } });
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') exitFs(); });
+function exIco(id,ex,label,faint){ const el=$(id); if(!el) return; el.className='exico'+(faint?' faint':''); el.innerHTML=ex?icon(ex.ico)+'<small>'+(label?label+'<br>':'')+ex.n+'</small>':''; }
 function loadScript(src){ return new Promise((ok,ko)=>{ const s=document.createElement('script'); s.src=src; s.crossOrigin='anonymous'; s.onload=ok; s.onerror=()=>ko(new Error('script')); document.head.appendChild(s); }); }
 function camFail(t){ msg(t+' Le mode guidé fonctionne sans caméra.'); }
 $('cCam').addEventListener('click',async()=>{
@@ -930,7 +942,7 @@ $('cCam').addEventListener('click',async()=>{
   $('cCam').disabled=true; msg('Ouverture de la caméra…'); const t0=Date.now();
   try{ stream=await getCam(); }
   catch(e){ $('cCam').disabled=false; camFail(e&&e.name==='NotAllowedError'?'Caméra bloquée ('+(Date.now()-t0<600?'par cette vue, sans demande d’autorisation':'autorisation refusée')+').':'Caméra indisponible dans cette vue ('+(e&&e.name||'erreur')+').'); return; }
-  const v=$('cVid'); fitStage(v); v.srcObject=stream; v.hidden=false; $('cPic').hidden=true; $('cTrack').hidden=true;
+  const v=$('cVid'); fitStage(v); v.srcObject=stream; v.hidden=false; $('cPic').hidden=true; $('cTrack').hidden=true; exIco('cExIco',cx); $('cExIco').hidden=false;
   try{ await v.play(); }catch(e){}
   msg('Chargement du suivi des mouvements (quelques secondes la première fois)…');
   try{
