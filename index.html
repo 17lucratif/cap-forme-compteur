@@ -199,6 +199,10 @@ ol.board small{display:block;color:var(--muted);font-size:.8rem}
 .stage::after{content:"";position:absolute;inset:0;border-radius:16px;border:8px solid #2FD27A;box-shadow:inset 0 0 36px rgba(47,210,122,.55);opacity:0;pointer-events:none;z-index:3}
 .stage.win::after{animation:win .7s ease-out}
 .stage.done::after{opacity:1;animation:none}
+.stage.live::after{opacity:1;animation:none;border-color:#2FD27A}
+.tstage{width:100%;max-height:56vh;margin:4px 0}
+.tstage .cnt b{font-size:2.6rem}
+.tstage .cue{font-size:clamp(.95rem,4.6vw,1.3rem)!important;padding:7px 16px}
 @keyframes win{0%{opacity:0}15%{opacity:1}70%{opacity:1}100%{opacity:0}}
 .sndb{font:inherit;font-size:.95rem;border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:999px;padding:6px 12px;cursor:pointer}
 .sndb[aria-pressed="false"]{color:var(--muted);text-decoration:line-through}
@@ -347,6 +351,12 @@ ol.board small{display:block;color:var(--muted);font-size:.8rem}
       <div class="timer" id="tBox">
         <div class="label" id="tPhase">Prêt</div>
         <div id="tIco"></div>
+        <div class="stage tstage" id="tStage" hidden>
+          <video id="tVid" playsinline muted></video>
+          <canvas id="tCan"></canvas>
+          <div class="cnt" id="tCnt" hidden><b id="tN">0</b><small>répétitions</small></div>
+          <div class="cue idle" id="tCue">Mets-toi dans l’image</div>
+        </div>
         <div class="now" id="tNow">Appuyez sur Démarrer</div>
         <div class="clock num" id="tClock">0:00</div>
         <div class="next" id="tNext"></div>
@@ -355,6 +365,8 @@ ol.board small{display:block;color:var(--muted);font-size:.8rem}
           <button class="btn ghost" id="tSkip" disabled>Passer</button>
           <button class="btn ghost" id="tReset" disabled>Arrêter</button>
         </div>
+        <button class="sndb" id="tCam" style="margin-top:4px">📷 Avec la caméra</button>
+        <p class="note" id="tMsg" style="margin:0" aria-live="polite"></p>
       </div>
       <ol class="steps" id="steps"></ol>
       <p class="note" style="margin:0">Douleur articulaire ou essoufflement inhabituel : on arrête et on en parle à son médecin.</p>
@@ -697,7 +709,7 @@ function renderSteps(cur){
 }
 const $=id=>document.getElementById(id);
 function setMode(m){
-  if(running) return; if(m!=='coach') stopCoach(); mode=m;
+  if(running) return; if(m!=='coach') stopCoach(); if(typeof camOff==='function'&&tCamOn) camOff(); mode=m;
   document.querySelectorAll('#mode button').forEach(x=>x.setAttribute('aria-selected',x.dataset.m===m));
   $('rTitle').textContent=MODES[m].title; $('rIntro').textContent=MODES[m].intro;
   $('lvl').hidden=m!=='reveil'; $('tBox').hidden=$('steps').hidden=m==='coach'; $('coach').hidden=m!=='coach';
@@ -724,12 +736,13 @@ function go(i){ idx=i; if(idx>=S.length){finish();return} left=S[idx].t; beep(S[
 function finish(){
   const M=MODES[mode]; stop(); $('tPhase').textContent='Terminé'; $('tNow').textContent='Bravo, c’est fait. +'+M.pts+' pt'+(M.pts>1?'s':''); $('tClock').textContent='✓'; $('tNext').textContent=''; $('tIco').innerHTML='';
   const d=state.days[TODAY]||(state.days[TODAY]={}); d[M.habit]=1; save(); renderAll(); beep(1046,.6);
+  if(tCamOn){ const st=$('tStage'); st.classList.remove('live'); st.classList.add('done'); $('tCnt').hidden=true; tcue('Bravo, c’est fait !','up'); }
 }
 function stop(){ running=false; clearInterval(tick); tick=null; $('tStart').textContent='Démarrer'; $('tSkip').disabled=true; $('tReset').disabled=true; try{wake&&wake.release()}catch(e){} wake=null; }
 function resetTimer(){ stop(); $('tIco').innerHTML=icon(curEx()[0].ico,'big faint'); $('tPhase').textContent='Prêt'; $('tNow').textContent='Appuyez sur Démarrer'; $('tClock').textContent='0:00'; $('tClock').classList.remove('rest'); $('tNext').textContent=''; renderSteps(-1); }
 $('tStart').addEventListener('click',async()=>{
   try{ if(!actx){const C=window.AudioContext||window.webkitAudioContext; if(C) actx=new C();} }catch(e){}
-  if(!running){ S=seq(); running=true; paused=false; go(0);
+  if(!running){ S=seq(); running=true; paused=false; $('tStage').classList.remove('done'); go(0); if(tCamPref&&!tCamOn) camOn();
     try{ if(navigator.wakeLock) wake=await navigator.wakeLock.request('screen'); }catch(e){}
     tick=setInterval(()=>{ if(paused) return; left--; const s=S[idx];
       if(s.sides&&left===s.t/2){ beep(990,.3); paint(); }
@@ -853,8 +866,7 @@ $('cCam').addEventListener('click',async()=>{
   try{ await v.play(); }catch(e){}
   msg('Chargement du suivi des mouvements (quelques secondes la première fois)…');
   try{
-    if(!window.Pose) await loadScript(MP+'pose.js');
-    if(!pose){ pose=new window.Pose({locateFile:f=>MP+f}); pose.setOptions({modelComplexity:0,smoothLandmarks:true,minDetectionConfidence:.5,minTrackingConfidence:.5}); pose.onResults(onPose); await pose.initialize(); }
+    await ensurePose();
   }catch(e){ stopStream(); $('cCam').disabled=false; camFail('Le suivi des mouvements n’a pas pu se charger.'); return; }
   $('cCam').disabled=false; msg('Posez le téléphone à 2-3 m, corps entier visible. Le bouton +1 rattrape une répétition manquée.');
   $('cCan').hidden=false; await startSession('cam'); loop();
@@ -895,6 +907,82 @@ function onPose(r){
     else if(cx.warn&&ang>cx.up&&cRun.min<cx.up-25){ cRun.min=999; cRun.warnUntil=Date.now()+1500; cue(cx.warn,'warn',true); }
     else if(Date.now()>(cRun.warnUntil||0)) cue(cx.cues[0],'');
   } else if(ang>cx.up){ cRun.stage='A'; cRun.min=999; count(); if(cRun&&!cRun.resting) cue(cx.cues[0],''); }
+}
+
+/* ---------- caméra pendant les routines (réveil, étirements) ---------- */
+// par pictogramme : reps = compte les répétitions, move = vérifie qu'on bouge, hold = vérifie qu'on tient la position
+const CAMK={
+  marche:{k:'move'}, bras:{k:'move'},
+  squat:{k:'reps',joint:'knee',down:105,up:160,cues:['Descends','Remonte']},
+  pompes:{k:'reps',joint:'elbow',down:115,up:155,cues:['Approche-toi du mur','Pousse']},
+  gainage:{k:'hold'},
+  fente:{k:'reps',joint:'knee',down:110,up:155,cues:['Descends','Remonte']},
+  bras_haut:{k:'hold'}
+};
+let tCamOn=false, tCamPref=false, tStream=null, tSt={idx:-1}, prevL=null, motion=0;
+try{ tCamPref=localStorage.getItem('capforme-cam-routine')==='1'; }catch(e){}
+function setCamPref(v){ tCamPref=v; try{ localStorage.setItem('capforme-cam-routine',v?'1':'0'); }catch(e){} }
+async function ensurePose(){
+  if(!window.Pose) await loadScript(MP+'pose.js');
+  if(!pose){ pose=new window.Pose({locateFile:f=>MP+f}); pose.setOptions({modelComplexity:0,smoothLandmarks:true,minDetectionConfidence:.5,minTrackingConfidence:.5}); pose.onResults(r=>(tCamOn?onPoseT:onPose)(r)); await pose.initialize(); }
+}
+function tmsg(t){ $('tMsg').textContent=t||''; }
+function tcue(t,cls,say){ const c=$('tCue'), k=t+'|'+(cls||''); if(c.dataset.k!==k){ c.textContent=t; c.className='cue '+(cls||''); c.dataset.k=k; } if(say) speak(t,true); }
+async function camOn(){
+  ensureAudio();
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){ tmsg('La caméra n’est pas disponible ici.'); return false; }
+  $('tCam').disabled=true; tmsg('Ouverture de la caméra…');
+  try{ tStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:640},height:{ideal:480}},audio:false}); }
+  catch(e){ $('tCam').disabled=false; tmsg(e&&e.name==='NotAllowedError'?'Accès à la caméra refusé : autorise-le dans Safari.':'Caméra indisponible.'); return false; }
+  const v=$('tVid'); v.srcObject=tStream; $('tStage').hidden=false; $('tIco').hidden=true;
+  try{ await v.play(); }catch(e){}
+  tmsg('Chargement du suivi des mouvements (quelques secondes la première fois)…');
+  try{ await ensurePose(); }catch(e){ camOff(); tmsg('Le suivi des mouvements n’a pas pu se charger.'); return false; }
+  tCamOn=true; tSt={idx:-1}; prevL=null; motion=0;
+  $('tCam').disabled=false; $('tCam').textContent='📷 Couper la caméra';
+  tmsg('Pose le téléphone à 2-3 m, le corps entier dans l’image.'); tLoop(); return true;
+}
+function camOff(){
+  tCamOn=false; try{ tStream&&tStream.getTracks().forEach(t=>t.stop()); }catch(e){} tStream=null;
+  const v=$('tVid'); v.srcObject=null; const st=$('tStage'); st.hidden=true; st.classList.remove('live','win','done');
+  $('tIco').hidden=false; $('tCam').textContent='📷 Avec la caméra'; $('tCam').disabled=false;
+}
+$('tCam').addEventListener('click',async()=>{ if(tCamOn){ camOff(); tmsg(''); setCamPref(false); } else if(await camOn()) setCamPref(true); });
+async function tLoop(){
+  if(!tCamOn) return; const v=$('tVid');
+  if(v.readyState>=2&&!busy){ busy=true; try{ await pose.send({image:v}); }catch(e){} busy=false; }
+  requestAnimationFrame(tLoop);
+}
+function onPoseT(r){
+  const v=$('tVid'), c=$('tCan'), W=v.videoWidth||640, H=v.videoHeight||480, st=$('tStage');
+  if(c.width!==W) c.width=W; if(c.height!==H) c.height=H;
+  const g=c.getContext('2d'); g.clearRect(0,0,W,H);
+  const L=r.poseLandmarks, s=running?S[idx]:null;
+  if(!L){ tcue('Mets-toi dans l’image','idle'); st.classList.remove('live'); return; }
+  const kind=!s||s.rest?null:(mode==='reveil'?(CAMK[s.ico]||{k:'move'}):{k:'hold'});
+  const used=kind&&kind.joint?JOINTS[kind.joint].flat():[];
+  g.lineCap='round'; g.lineWidth=Math.max(4,W/110); g.strokeStyle='rgba(255,255,255,.92)'; g.shadowColor='rgba(0,0,0,.5)'; g.shadowBlur=6;
+  BONES.forEach(([a,b])=>{ const A=L[a],B=L[b]; if((A.visibility||0)<.4||(B.visibility||0)<.4) return; g.beginPath(); g.moveTo(A.x*W,A.y*H); g.lineTo(B.x*W,B.y*H); g.stroke(); });
+  [11,12,13,14,15,16,23,24,25,26,27,28].forEach(i=>{ const p=L[i]; if((p.visibility||0)<.4) return; g.fillStyle=used.includes(i)?'#E9B04A':'#fff'; g.beginPath(); g.arc(p.x*W,p.y*H,used.includes(i)?W/70:W/110,0,7); g.fill(); });
+  const ids=[11,12,13,14,15,16,23,24,25,26,27,28].filter(i=>(L[i].visibility||0)>.5);
+  if(prevL&&ids.length){ let d=0; ids.forEach(i=>{ d+=Math.hypot(L[i].x-prevL[i].x,L[i].y-prevL[i].y); }); motion=motion*.85+(d/ids.length)*.15; }
+  prevL=L.map(p=>({x:p.x,y:p.y}));
+  if(!s){ st.classList.remove('live'); if(!st.classList.contains('done')) tcue('Prêt : touche Démarrer','idle'); $('tCnt').hidden=true; return; }
+  if(s.rest||paused){ tcue(paused?'Pause':(mode==='reveil'?'Récupère':'Mets-toi en place'),'idle'); st.classList.remove('live'); $('tCnt').hidden=true; return; }
+  if(ids.length<4){ tcue('Recule : corps entier visible','idle'); st.classList.remove('live'); return; }
+  if(tSt.idx!==idx){ tSt={idx,n:0,stage:'A'}; $('tN').textContent='0'; }
+  if(kind.k==='reps'){
+    $('tCnt').hidden=false; st.classList.remove('live');
+    const ang=angleAt(L,kind.joint,W/H);
+    if(ang==null){ tcue('Recule : corps entier visible','idle'); return; }
+    if(tSt.stage==='A'){ if(ang<kind.down){ tSt.stage='B'; tcue(kind.cues[1],'up'); } else tcue(kind.cues[0],''); }
+    else if(ang>kind.up){ tSt.stage='A'; tSt.n++; $('tN').textContent=tSt.n; st.classList.remove('win'); void st.offsetWidth; st.classList.add('win'); chime(); speak(String(tSt.n),false); tcue(kind.cues[0],''); }
+    return;
+  }
+  $('tCnt').hidden=true;
+  const M=motion*100;
+  if(kind.k==='move'){ const ok=M>0.35; st.classList.toggle('live',ok); tcue(ok?'Super, continue !':'Bouge un peu plus',ok?'':'up'); }
+  else { const ok=M<0.22; st.classList.toggle('live',ok); tcue(ok?'Tiens la position, respire':'Reste immobile',ok?'':'up'); }
 }
 
 renderAll();
