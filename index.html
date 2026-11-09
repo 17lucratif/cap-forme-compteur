@@ -238,6 +238,17 @@ ol.steps li.done .dur::after{content:" ✓";color:var(--accent)}
 .pbar.body .fill{background:linear-gradient(90deg,#2C8A5E,#3FB27A)}
 .pbar.body.mid .fill{background:linear-gradient(90deg,#3FB27A,#D9A62E)}
 .pbar.body.over .fill{background:linear-gradient(90deg,#E07B2E,#C4453A)}
+.ktxt{display:grid;gap:6px;min-width:0}
+#kcalCard>*{min-width:0}
+.ktxt .row{min-width:0}
+.ktxt input{width:100%}
+.ktxt input{flex:1;min-width:0;font:inherit;font-size:16px;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:11px 12px}
+.ktxt .row{flex-wrap:nowrap}
+.est{display:grid;gap:8px;padding:12px;border-radius:12px;background:var(--accent-soft)}
+.est ul{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.est li{display:grid;grid-template-columns:1fr auto;gap:8px;font-size:.92rem}
+.est li small{color:var(--muted)}
+.est .tot{font-family:var(--display);font-weight:700;font-size:1.6rem}
 .needs{display:grid;gap:8px}
 .pbar{position:relative;height:30px;border-radius:999px;background:var(--sunk);box-shadow:inset 0 0 0 1px var(--line);overflow:hidden}
 .pbar .fill{position:absolute;inset:0 auto 0 0;width:0%;border-radius:999px;transition:width .6s ease}
@@ -443,9 +454,14 @@ body.fs-on{overflow:hidden}
       <div id="kcalBody"></div>
       <div class="needs" id="needs"></div>
       <ul class="meals" id="meals"></ul>
+      <form id="kTxtForm" class="ktxt">
+        <label class="field" for="kTxt">Qu’as-tu mangé ou bu ?</label>
+        <div class="row"><input id="kTxt" placeholder="Ex. un demi mug de café avec une cuillère de miel" autocomplete="off" enterkeyhint="done"><button class="btn" type="submit">Calculer</button></div>
+      </form>
+      <div id="kTxtOut" aria-live="polite"></div>
       <div class="row">
         <button class="btn" id="kPhoto" hidden>📷 Photo avec Claude</button>
-        <button class="btn ghost" id="kAdd">+ Ajouter à la main</button>
+        <button class="btn ghost" id="kAdd">Saisir les kcal directement</button>
       </div>
       <form id="kForm" class="row" hidden>
         <input id="kNom" placeholder="Repas (ex. salade César)" style="flex:1;min-width:150px;font:inherit;font-size:16px;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px">
@@ -957,6 +973,140 @@ document.getElementById('pSave').addEventListener('click',()=>{
   { const r=Math.round(kg*10)/10; if(curKg()!==r){ state.weights=state.weights.filter(w=>w.d!==TODAY); state.weights.push({d:TODAY,kg:r}); renderWeight(); } }
   state.profil=Object.assign({},state.profil||{},{sexe:$('pSexe').value,naissance:n,taille:t,act:+$('pAct').value});
   save(); renderPoids(); renderKcal(); $('pMsg').className='ok'; $('pMsg').textContent='Profil enregistré.';
+});
+/* ---------- calcul des kcal à partir d'un texte libre ---------- */
+// Valeurs moyennes pour 100 g (ou 100 ml) : [kcal, protéines, glucides, lipides]. u = poids d'une unité « naturelle » (pièce, cuillère, tranche…)
+const FOODS=[
+  {n:'café',a:['cafe','expresso','espresso','cafe noir','cafe allonge'],v:[2,0.1,0,0],liq:1,u:{tasse:100}},
+  {n:'café au lait',a:['cafe au lait','cafe creme','creme','latte','cappuccino'],v:[30,1.7,2.6,1.4],liq:1},
+  {n:'thé',a:['the','infusion','tisane'],v:[1,0,0.2,0],liq:1},
+  {n:'lait demi-écrémé',a:['lait','lait demi ecreme'],v:[46,3.2,4.8,1.6],liq:1,d:30},
+  {n:'lait entier',a:['lait entier'],v:[64,3.2,4.7,3.6],liq:1,d:30},
+  {n:'lait d’avoine',a:['lait d avoine','lait vegetal','boisson avoine','lait de soja','lait d amande'],v:[45,1,6.5,1.5],liq:1,d:30},
+  {n:'sucre',a:['sucre','sucres','morceau de sucre','sucre en poudre'],v:[400,0,100,0],u:{piece:5,morceau:5,cuillere:5}},
+  {n:'miel',a:['miel'],v:[304,0.3,82,0],u:{cuillere:7,piece:7}},
+  {n:'confiture',a:['confiture','confitures'],v:[250,0.4,62,0.1],u:{cuillere:15,piece:15}},
+  {n:'pâte à tartiner',a:['nutella','pate a tartiner'],v:[540,6,57,31],u:{cuillere:15,piece:15}},
+  {n:'beurre',a:['beurre'],v:[740,0.7,0.6,82],u:{cuillere:10,noisette:8,piece:10}},
+  {n:'pain',a:['pain','baguette','pain complet','pain de campagne'],v:[270,9,52,2],u:{tranche:30,piece:30,morceau:30}},
+  {n:'pain de mie',a:['pain de mie'],v:[265,8,49,4],u:{tranche:25,piece:25}},
+  {n:'biscotte',a:['biscotte','biscottes'],v:[410,11,73,7],u:{piece:9}},
+  {n:'croissant',a:['croissant','croissants'],v:[420,8,45,22],u:{piece:60}},
+  {n:'pain au chocolat',a:['pain au chocolat','chocolatine'],v:[420,7,48,22],u:{piece:70}},
+  {n:'céréales',a:['cereales','corn flakes','muesli','granola'],v:[380,8,72,6],u:{bol:40,portion:40}},
+  {n:'flocons d’avoine',a:['flocons d avoine','avoine','porridge'],v:[370,13,60,7],u:{cuillere:10,bol:40,portion:40}},
+  {n:'yaourt nature',a:['yaourt','yaourts','yogourt','skyr'],v:[60,4,5,2],u:{pot:125,piece:125}},
+  {n:'fromage blanc',a:['fromage blanc'],v:[75,7.5,4,3],u:{pot:100,cuillere:20}},
+  {n:'compote',a:['compote','compotes'],v:[70,0.3,17,0.1],u:{pot:100,gourde:90,piece:100}},
+  {n:'œuf',a:['oeuf','oeufs','œuf','œufs','omelette'],v:[140,12.5,0.7,10],u:{piece:55}},
+  {n:'jambon',a:['jambon','jambon blanc'],v:[115,20,1,3.5],u:{tranche:40,piece:40}},
+  {n:'fromage',a:['fromage','emmental','comte','gruyere','camembert','brie','chevre'],v:[370,25,0.5,30],u:{portion:30,tranche:20,morceau:30,piece:30}},
+  {n:'pomme',a:['pomme','pommes'],v:[52,0.3,14,0.2],u:{piece:150}},
+  {n:'banane',a:['banane','bananes'],v:[90,1.1,23,0.3],u:{piece:120}},
+  {n:'orange',a:['orange','oranges','clementine','clementines','mandarine'],v:[47,0.9,12,0.1],u:{piece:130}},
+  {n:'fruits rouges',a:['fraises','framboises','myrtilles','fruits rouges'],v:[40,0.8,9,0.4],u:{bol:150,poignee:60}},
+  {n:'jus d’orange',a:['jus d orange','jus de fruit','jus de fruits','jus'],v:[45,0.7,10,0.2],liq:1},
+  {n:'riz cuit',a:['riz'],v:[130,2.7,28,0.3],u:{assiette:200,portion:180,bol:200}},
+  {n:'pâtes cuites',a:['pates','spaghetti','spaghettis','tagliatelles','coquillettes','penne'],v:[150,5,30,0.9],u:{assiette:220,portion:200}},
+  {n:'semoule / quinoa cuits',a:['semoule','quinoa','boulgour'],v:[120,4,23,1.5],u:{assiette:200,portion:180}},
+  {n:'pomme de terre',a:['pomme de terre','pommes de terre','patate','patates','puree'],v:[80,2,17,0.1],u:{piece:150,assiette:250,portion:200}},
+  {n:'frites',a:['frites'],v:[310,3.4,41,15],u:{portion:150,assiette:200,cornet:150}},
+  {n:'légumes',a:['legumes','haricots verts','brocolis','brocoli','courgette','courgettes','carottes','carotte','epinards','ratatouille','haricot vert'],v:[30,1.8,5,0.3],u:{assiette:250,portion:200,piece:100}},
+  {n:'salade verte',a:['salade','salade verte'],v:[15,1.3,2,0.2],u:{bol:60,assiette:60,portion:60}},
+  {n:'tomate',a:['tomate','tomates'],v:[18,0.9,3.9,0.2],u:{piece:120}},
+  {n:'avocat',a:['avocat','avocats'],v:[160,2,8.5,15],u:{piece:150}},
+  {n:'lentilles cuites',a:['lentilles','pois chiches','haricots rouges'],v:[115,9,20,0.4],u:{assiette:200,portion:180}},
+  {n:'poulet',a:['poulet','blanc de poulet','dinde','escalope'],v:[165,31,0,3.6],u:{piece:130,portion:130,tranche:30}},
+  {n:'steak haché',a:['steak hache','steak','boeuf','bœuf','viande'],v:[180,26,0,8],u:{piece:100,portion:130}},
+  {n:'saumon',a:['saumon','pave de saumon'],v:[200,20,0,13],u:{piece:130,pave:130,portion:130,tranche:30}},
+  {n:'poisson blanc',a:['poisson','cabillaud','colin','merlu','thon'],v:[100,22,0,1],u:{piece:130,portion:130,boite:100}},
+  {n:'huile',a:['huile','huile d olive'],v:[900,0,0,100],u:{cuillere:10,filet:5}},
+  {n:'vinaigrette',a:['vinaigrette','sauce salade'],v:[450,0.5,5,47],u:{cuillere:15}},
+  {n:'mayonnaise',a:['mayonnaise','mayo'],v:[700,1,1,77],u:{cuillere:15}},
+  {n:'ketchup',a:['ketchup'],v:[110,1.5,25,0.2],u:{cuillere:15}},
+  {n:'crème fraîche',a:['creme fraiche'],v:[300,2.4,3,30],u:{cuillere:15},d:15},
+  {n:'chocolat',a:['chocolat','chocolat noir','chocolat au lait'],v:[545,6,50,35],u:{carre:5,piece:5,barre:20,tablette:100}},
+  {n:'biscuit',a:['biscuit','biscuits','gateau sec','cookie','cookies'],v:[470,6,65,20],u:{piece:12}},
+  {n:'gâteau',a:['gateau','gâteau','cake','tarte','brownie','patisserie','dessert'],v:[400,5,50,20],u:{part:90,piece:90,portion:90}},
+  {n:'glace',a:['glace','glaces','sorbet'],v:[200,3.5,24,10],u:{boule:50,pot:100,piece:60}},
+  {n:'pizza',a:['pizza','pizzas'],v:[260,11,31,10],u:{part:120,piece:400,portion:400}},
+  {n:'burger',a:['burger','hamburger','cheeseburger'],v:[250,13,25,11],u:{piece:220}},
+  {n:'sandwich',a:['sandwich','jambon beurre','panini','wrap'],v:[260,11,32,9],u:{piece:250}},
+  {n:'quiche',a:['quiche','tarte salee'],v:[270,9,18,18],u:{part:150,piece:150}},
+  {n:'soupe',a:['soupe','veloute','potage'],v:[40,1.2,6,1.3],liq:1,u:{bol:300,assiette:300}},
+  {n:'amandes / noix',a:['amandes','noix','noisettes','cacahuetes','noix de cajou','fruits secs'],v:[610,20,15,52],u:{poignee:25,piece:1.2}},
+  {n:'chips',a:['chips'],v:[540,6,50,35],u:{paquet:30,poignee:20}},
+  {n:'vin',a:['vin','vin rouge','vin blanc','rose','champagne'],v:[85,0,2.6,0],liq:1,u:{verre:125,coupe:100}},
+  {n:'bière',a:['biere','bieres'],v:[43,0.5,3.5,0],liq:1,u:{verre:250,demi:250,pinte:500,piece:250}},
+  {n:'soda',a:['coca','soda','limonade','orangina','ice tea'],v:[42,0,10.6,0],liq:1,u:{canette:330}},
+  {n:'soda zéro',a:['coca zero','coca light','soda zero','soda light'],v:[0.5,0,0,0],liq:1,u:{canette:330}},
+  {n:'eau',a:['eau','eau gazeuse','perrier'],v:[0,0,0,0],liq:1},
+  {n:'sirop',a:['sirop'],v:[300,0,75,0],liq:1,u:{cuillere:15}}
+];
+// contenants et unités : grammes ou ml
+const UNITS=[
+  {k:'mug',a:['mug','mugs'],g:300},{k:'tasse',a:['tasse','tasses'],g:150},{k:'bol',a:['bol','bols'],g:300},
+  {k:'verre',a:['verre','verres'],g:200},{k:'canette',a:['canette','canettes'],g:330},{k:'bouteille',a:['bouteille','bouteilles'],g:500},
+  {k:'cuillereS',a:['cuillere a soupe','cuilleres a soupe','c a s','cas','cs','cuillere a s'],g:15},
+  {k:'cuillereC',a:['cuillere a cafe','cuilleres a cafe','c a c','cac','cc','cuillere a c','petite cuillere'],g:5},
+  {k:'cuillere',a:['cuillere','cuilleres','cuillerée','cuilleree'],g:null},
+  {k:'tranche',a:['tranche','tranches'],g:null},{k:'morceau',a:['morceau','morceaux'],g:null},{k:'part',a:['part','parts'],g:null},
+  {k:'portion',a:['portion','portions'],g:null},{k:'pot',a:['pot','pots'],g:null},{k:'assiette',a:['assiette','assiettes'],g:250},
+  {k:'poignee',a:['poignee','poignees'],g:25},{k:'carre',a:['carre','carres'],g:5},{k:'boule',a:['boule','boules'],g:50},
+  {k:'paquet',a:['paquet','paquets','sachet'],g:30},{k:'barre',a:['barre','barres'],g:20},{k:'noisette',a:['noisette de'],g:8},
+  {k:'pave',a:['pave'],g:130},{k:'filet',a:['filet','trait'],g:5},{k:'pincee',a:['pincee'],g:1},{k:'gourde',a:['gourde'],g:90},
+  {k:'demi',a:['demi pression'],g:250},{k:'pinte',a:['pinte'],g:500},{k:'coupe',a:['coupe'],g:100},{k:'cornet',a:['cornet'],g:150},
+  {k:'tablette',a:['tablette'],g:100},{k:'boite',a:['boite'],g:100}
+];
+const ULBL={cuillereS:'c. à soupe',cuillereC:'c. à café',cuillere:'cuillère',carre:'carré',poignee:'poignée',pave:'pavé',pincee:'pincée',boite:'boîte',demi:'demi'};
+const INTS={'un':1,'une':1,'deux':2,'trois':3,'quatre':4,'cinq':5,'six':6,'sept':7,'huit':8,'neuf':9,'dix':10,'quelques':3,'plusieurs':3,'double':2};
+const FRACS={'demi':0.5,'demie':0.5,'moitie':0.5,'quart':0.25,'tiers':1/3};
+const norm=t=>t.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/œ/g,'oe').replace(/[’'.]/g,' ').replace(/-/g,' ').replace(/\s+/g,' ').trim();
+const hasWord=(hay,w)=>new RegExp('(^| )'+w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'( |$)').test(hay);
+function parseQty(t){
+  let m=t.match(/(\d+(?:[.,]\d+)?)\s*(kg|g|gr|grammes?|ml|cl|l|litres?)(?=\s|$)/);
+  if(m){ const v=parseFloat(m[1].replace(',','.')), u=m[2]; const g=u==='kg'?v*1000:u==='cl'?v*10:(u==='l'||u.startsWith('litre'))?v*1000:v; return {grams:g,t:t.replace(m[0],' ')}; }
+  let num=null, frac=1;
+  m=t.match(/(\d+)\s*\/\s*(\d+)/); if(m){ num=+m[1]/+m[2]; t=t.replace(m[0],' '); }
+  m=t.match(/½|¼|¾/); if(m){ frac*={'½':.5,'¼':.25,'¾':.75}[m[0]]; t=t.replace(m[0],' '); }
+  if(num==null){ m=t.match(/(\d+(?:[.,]\d+)?)/); if(m){ num=parseFloat(m[1].replace(',','.')); t=t.replace(m[0],' '); } }
+  let base=null; const toks=t.split(' ').filter(w=>{ if(w in FRACS){ frac*=FRACS[w]; return false; } if(w in INTS){ if(base==null) base=INTS[w]; return false; } return true; });
+  return {q:(num!=null?num:(base!=null?base:1))*frac,t:' '+toks.join(' ')+' '};
+}
+function findFood(t){ let best=null; FOODS.forEach(f=>[f.n,...f.a].map(norm).forEach(a=>{ if(hasWord(t,a)&&(!best||a.length>best.len)) best={f,len:a.length,a}; })); return best&&best.f; }
+function findUnit(t){ let best=null; UNITS.forEach(u=>u.a.map(norm).forEach(a=>{ if(hasWord(t,a)&&(!best||a.length>best.len)) best={u,len:a.length}; })); return best&&best.u; }
+function estimate(text){
+  const parts=norm(text).split(/,|;|\+| et | avec | puis | plus |\n/).map(x=>x.trim()).filter(Boolean);
+  const items=[], unknown=[];
+  parts.forEach(raw=>{
+    const food=findFood(raw); if(!food){ if(raw.replace(/\b(un|une|de|du|des|d|la|le|les|a|au)\b/g,'').trim()) unknown.push(raw); return; }
+    const pq=parseQty(raw); let grams=pq.grams, label='';
+    if(grams==null){ const u=findUnit(pq.t); const fu=food.u||{};
+      let per=null;
+      if(u){ per=(u.k==='cuillereS')?(fu.cuillere&&fu.cuillere>12?fu.cuillere:15):(u.k==='cuillereC')?(fu.cuillere&&fu.cuillere<10?fu.cuillere:5):(u.k==='verre'&&fu.verre)?fu.verre:(u.k==='tasse'&&fu.tasse)?fu.tasse:(fu[u.k]!=null?fu[u.k]:u.g);
+        if(per==null) per=fu.piece||fu.portion||100; label=ULBL[u.k]||u.a[0]; }
+      else { per=fu.piece||food.d||fu.portion||(food.liq?200:100); label=fu.piece?'pièce':food.d?'un peu':'portion'; }
+      grams=pq.q*per; const qq=pq.q; label=(label==='un peu'&&qq===1)?'un peu':(qq===0.5?'½':qq===0.25?'¼':String(Math.round(qq*100)/100).replace('.',','))+' '+label+(qq>1&&!/^(c\.|un peu)/.test(label)&&!/s$/.test(label)?'s':'');
+    } else label=Math.round(grams)+(food.liq?' ml':' g');
+    const k=v=>Math.round(grams*v/100*10)/10;
+    items.push({nom:food.n,label,grams:Math.round(grams),kcal:Math.round(grams*food.v[0]/100),p:k(food.v[1]),g:k(food.v[2]),l:k(food.v[3]),liq:!!food.liq});
+  });
+  const sum=f=>Math.round(items.reduce((a,x)=>a+x[f],0));
+  return {items,unknown,kcal:sum('kcal'),p:sum('p'),g:sum('g'),l:sum('l')};
+}
+
+let kEst=null;
+document.getElementById('kTxtForm').addEventListener('submit',ev=>{
+  ev.preventDefault(); const txt=$('kTxt').value.trim(), out=$('kTxtOut'); if(!txt){ $('kTxt').focus(); return; }
+  const r=estimate(txt); kEst={txt,r};
+  if(!r.items.length){ out.innerHTML='<p class="note" style="margin:0">Je ne reconnais pas cet aliment. Précise-le (ex. « 100 g de riz ») ou saisis les kcal directement.</p>'; return; }
+  out.innerHTML='<div class="est"><ul>'+r.items.map(i=>'<li><span>'+esc(i.label)+' · '+esc(i.nom)+' <small>('+i.grams+(i.liq?' ml':' g')+')</small></span><b>'+i.kcal+' kcal</b></li>').join('')+'</ul>'+
+    (r.unknown.length?'<p class="note" style="margin:0">Non reconnu : '+esc(r.unknown.join(', '))+'.</p>':'')+
+    '<div class="row" style="justify-content:space-between"><span class="tot">'+r.kcal+' kcal</span><span class="note">P '+r.p+' g · G '+r.g+' g · L '+r.l+' g</span></div>'+
+    '<div class="row"><button class="btn" id="kEstAdd" type="button">Ajouter à ma journée</button><button class="btn ghost" id="kEstNo" type="button">Annuler</button></div>'+
+    '<p class="note" style="margin:0">Estimation à partir de valeurs moyennes.</p></div>';
+  $('kEstAdd').addEventListener('click',()=>{ if(!kEst) return; const t=kEst.txt; addMeal({nom:t.charAt(0).toUpperCase()+t.slice(1,60),kcal:kEst.r.kcal,p:kEst.r.p,g:kEst.r.g,l:kEst.r.l,src:'texte'}); kEst=null; $('kTxt').value=''; $('kTxtOut').innerHTML=''; });
+  $('kEstNo').addEventListener('click',()=>{ kEst=null; $('kTxtOut').innerHTML=''; });
 });
 /* ---------- calories du jour ---------- */
 document.getElementById('topK').addEventListener('click',()=>{ show('jour'); setTimeout(()=>document.getElementById('kcalCard').scrollIntoView({behavior:'smooth',block:'center'}),30); });
