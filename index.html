@@ -109,6 +109,9 @@ textarea{width:100%;min-height:96px;resize:vertical}
 .timer .next{font-size:.9rem;color:var(--muted)}
 ol.steps{margin:0;padding:0;list-style:none;display:grid;gap:0;counter-reset:s}
 ol.steps li{display:grid;grid-template-columns:22px 44px 1fr auto;gap:10px;padding:8px 6px;border-top:1px solid var(--line);counter-increment:s;align-items:center}
+ol.steps.pick li{cursor:pointer;border-radius:8px}
+ol.steps.pick li:hover{background:var(--sunk)}
+.pickhint{font-size:.82rem;color:var(--muted);margin:0}
 .ico{width:40px;height:40px;flex:none;fill:none;stroke:var(--fg);stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
 .ico .prop{stroke:var(--muted);stroke-width:2}
 .ico .dash{stroke:var(--accent);stroke-width:2;stroke-dasharray:3 4}
@@ -594,7 +597,8 @@ body.fs-on{overflow:hidden}
             <button class="btn ghost" id="clStop" disabled>Arrêter</button>
           </div>
         </div>
-        <ol class="steps" id="clList"></ol>
+        <p class="pickhint">Touche un exercice ou une machine pour y aller directement (machine occupée, envie de commencer par le rameur…).</p>
+        <ol class="steps pick" id="clList"></ol>
         <p class="note" style="margin:0">Charges : choisis un poids qui permet 12 répétitions propres en gardant 2 ou 3 répétitions « en réserve ». Si c’était facile, ajoute 2,5 à 5 kg la fois suivante. Au premier passage, demande à un coach de régler les machines à ta taille.</p>
       </div>
       <div class="timer" id="tBox">
@@ -626,7 +630,8 @@ body.fs-on{overflow:hidden}
         </div>
         <p class="note" id="tMsg" style="margin:0" aria-live="polite"></p>
       </div>
-      <ol class="steps" id="steps"></ol>
+      <p class="pickhint" id="stepsHint">Touche un exercice pour le faire dans l’ordre que tu préfères.</p>
+      <ol class="steps pick" id="steps"></ol>
       <p class="note" style="margin:0">Douleur articulaire ou essoufflement inhabituel : on arrête et on en parle à son médecin.</p>
     </div>
   </section>
@@ -1206,20 +1211,23 @@ function seq(){
   for(let k=0;k<r.rounds;k++) EX_REVEIL.forEach((e,i)=>{out.push({...e,i,t:r.work,rest:false,round:k}); if(!(k===r.rounds-1&&i===EX_REVEIL.length-1)) out.push({n:'Récupération',s:'',i,t:r.rest,rest:true,round:k});});
   return out;
 }
-let doneEx=new Set();
+let doneEx=new Set(), skippedEx=new Set(), startIdx=0;
 function okFlash(id){ const el=document.getElementById(id); if(!el) return; el.hidden=true; void el.offsetWidth; el.hidden=false; clearTimeout(el._t); el._t=setTimeout(()=>{ el.hidden=true; },950); }
 function renderSteps(cur){
   const r=ROUT[lvl]; const ol=document.getElementById('steps'); ol.innerHTML='';
   curEx().forEach((e,i)=>{const li=document.createElement('li'); const dn=doneEx.has(i); li.className=cur===i?'cur':dn?'done':'';
     const dur= mode==='reveil' ? r.work+' s'+(r.rounds>1?' ×'+r.rounds:'') : (e.sides? (e.t/2)+' s / côté' : e.t+' s');
-    li.innerHTML=icon(e.ico)+'<span>'+e.n+'<small>'+e.s+'</small></span><span class="dur">'+(dn&&cur!==i?'<span class="okb" aria-label="fait">✓</span>':dur)+'</span>'; ol.appendChild(li);});
+    li.innerHTML=icon(e.ico)+'<span>'+e.n+'<small>'+e.s+'</small></span><span class="dur">'+(dn&&cur!==i?'<span class="okb" aria-label="fait">✓</span>':dur)+'</span>';
+    li.tabIndex=0; li.setAttribute('role','button'); li.setAttribute('aria-label','Faire : '+e.n);
+    li.addEventListener('click',()=>pickEx(i)); li.addEventListener('keydown',ev=>{ if(ev.key==='Enter'||ev.key===' '){ ev.preventDefault(); pickEx(i); } });
+    ol.appendChild(li);});
 }
 const $=id=>document.getElementById(id);
 function setMode(m){
   if(running) return; exitFs(); if(m!=='coach') stopCoach(); if(m!=='club'&&typeof clubStop==='function') clubStop(true); if(typeof camOff==='function'&&tCamOn) camOff(); mode=m;
   document.querySelectorAll('#mode button').forEach(x=>x.setAttribute('aria-selected',x.dataset.m===m));
   $('rTitle').textContent=MODES[m].title; $('rIntro').textContent=MODES[m].intro;
-  $('lvl').hidden=m!=='reveil'; $('tBox').hidden=$('steps').hidden=(m==='coach'||m==='club'); $('coach').hidden=m!=='coach'; $('club').hidden=m!=='club';
+  $('lvl').hidden=m!=='reveil'; $('tBox').hidden=$('steps').hidden=$('stepsHint').hidden=(m==='coach'||m==='club'); $('coach').hidden=m!=='coach'; $('club').hidden=m!=='club';
   if(m==='coach'){ renderCoach(); return; }
   if(m==='club'){ clubRender(); return; }
   resetTimer();
@@ -1242,7 +1250,7 @@ function clubPlan(tours){
   st.push({k:'cardio',n:'Étirements',ico:'enfant',tip:'Sans à-coups, jamais jusqu’à la douleur.',ph:[{t:40,d:'Quadriceps · 20 s par jambe'},{t:40,d:'Ischio-jambiers · 20 s par jambe'},{t:40,d:'Pectoraux · dans un encadrement'}]});
   return st;
 }
-let CL={on:false,plan:[],i:0,ph:0,left:0,rest:false,paused:false,iv:null,wake:null,done:new Set()};
+let CL={on:false,plan:[],i:0,ph:0,left:0,rest:false,paused:false,iv:null,wake:null,done:new Set(),skip:new Set()};
 const clTours=()=>+(state.clubTours||2);
 function clubRender(){
   if(CL.on) return;
@@ -1268,8 +1276,9 @@ function clubShow(){
     const last=state.charges&&state.charges[s.m.id]; $('clKgIn').value=last?last.kg:''; $('clKgLast').textContent=last?'dernière fois : '+nf(last.kg)+' kg':'règle une charge légère'; $('clMain').textContent='Série faite ✓'; }
 }
 function clubGo(i){
-  CL.i=i; CL.ph=0; CL.rest=false; CL.paused=false;
-  if(i>=CL.plan.length){ clubFinish(); return; }
+  CL.ph=0; CL.rest=false; CL.paused=false;
+  if(i>=CL.plan.length){ const j=CL.plan.findIndex((x,k)=>!CL.done.has(k)&&!CL.skip.has(k)); if(j<0){ CL.i=i; clubFinish(); return; } i=j; speak('Il reste '+CL.plan[j].n,false); }
+  CL.i=i;
   const s=CL.plan[i]; if(s.k==='cardio') CL.left=s.ph[0].t;
   beep(880,.25); speak(s.n+(s.k==='set'?', 12 répétitions':', '+s.ph[0].d),true); clubShow();
 }
@@ -1283,10 +1292,10 @@ function clubTick(){
   CL.done.add(CL.i); okFlash('clOk'); if(sndOn) chime();
   clubGo(CL.i+1);
 }
-async function clubStart(){
-  ensureAudio(); CL.on=true; CL.done=new Set(); CL.plan=clubPlan(clTours());
+async function clubStart(at){
+  ensureAudio(); CL.on=true; CL.done=new Set(); CL.skip=new Set(); CL.plan=clubPlan(clTours());
   $('clSkip').disabled=false; $('clStop').disabled=false;
-  clearInterval(CL.iv); CL.iv=setInterval(clubTick,1000); clubGo(0);
+  clearInterval(CL.iv); CL.iv=setInterval(clubTick,1000); clubGo(at||0);
   try{ if(navigator.wakeLock) navigator.wakeLock.request('screen').then(w=>{ CL.wake=w; }).catch(()=>{}); }catch(e){}
 }
 function clubStop(silent){ if(!CL.on&&!silent) return; CL.on=false; clearInterval(CL.iv); CL.iv=null; try{ CL.wake&&CL.wake.release(); }catch(e){} CL.wake=null; if(!silent||mode==='club') clubRender(); }
@@ -1296,7 +1305,7 @@ function clubFinish(){
   $('clMain').textContent='Recommencer'; clubList(CL.plan.length); if(sndOn) chime(true); speak('Bravo, séance terminée !',true);
 }
 $('clMain').addEventListener('click',()=>{
-  if(!CL.on){ clubStart(); return; }
+  if(!CL.on){ clubStart(0); return; }
   const s=CL.plan[CL.i];
   if(s.k==='cardio'){ CL.paused=!CL.paused; clubShow(); return; }
   if(CL.rest){ clubGo(CL.i+1); return; }
@@ -1304,7 +1313,9 @@ $('clMain').addEventListener('click',()=>{
   if(kg>=0&&kg<=300){ state.charges=state.charges||{}; state.charges[s.m.id]={kg:Math.round(kg*10)/10,d:TODAY}; save(); }
   if(sndOn) chime(); CL.done.add(CL.i); okFlash('clOk'); CL.rest=true; CL.left=s.rest; speak('Bien. Une minute de repos.',true); clubShow();
 });
-$('clSkip').addEventListener('click',()=>{ if(CL.on) clubGo(CL.i+1); });
+$('clSkip').addEventListener('click',()=>{ if(!CL.on) return; if(!CL.rest&&!CL.done.has(CL.i)) CL.skip.add(CL.i); clubGo(CL.i+1); });
+$('clList').addEventListener('click',ev=>{ const li=ev.target.closest('li'); if(!li) return; const i=[...$('clList').children].indexOf(li); if(i<0) return;
+  if(!CL.on){ clubStart(i); return; } CL.skip.delete(i); clubGo(i); });
 $('clStop').addEventListener('click',()=>clubStop());
 document.getElementById('goClub').addEventListener('click',()=>{ show('reveil'); setMode('club'); window.scrollTo({top:0,behavior:'smooth'}); });
 document.querySelectorAll('#lvl button').forEach(b=>b.addEventListener('click',()=>{ if(running) return; lvl=+b.dataset.l; state.level=lvl; save(); document.querySelectorAll('#lvl button').forEach(x=>x.setAttribute('aria-pressed',x===b)); renderSteps(-1); }));
@@ -1322,7 +1333,14 @@ function paint(){
   const nx=S.slice(idx+1).find(x=>!x.rest); $('tNext').textContent=nx?'Ensuite : '+nx.n:'Dernier';
   renderSteps(s.rest?((S.slice(idx+1).find(x=>!x.rest)||{i:-1}).i):s.i);
 }
-function go(i){ idx=i; if(idx>=S.length){finish();return} left=S[idx].t; beep(S[idx].rest?440:880,.25); paint(); }
+function pickEx(i){
+  if(mode==='coach'||mode==='club') return;
+  if(!running){ const j=seq().findIndex(x=>!x.rest&&x.i===i); if(j<0) return; startIdx=j; $('tStart').click(); return; }
+  let j=S.findIndex((x,k)=>k>=idx&&!x.rest&&x.i===i); if(j<0) j=S.findIndex(x=>!x.rest&&x.i===i);
+  if(j>=0){ paused=false; $('tStart').textContent='Pause'; skippedEx.delete(i); go(j); }
+}
+function go(i){ idx=i;
+  if(idx>=S.length){ const j=S.findIndex(x=>!x.rest&&!doneEx.has(x.i)&&!skippedEx.has(x.i)); if(j<0){ finish(); return; } idx=j; speak('Il reste '+S[j].n,false); } left=S[idx].t; beep(S[idx].rest?440:880,.25); paint(); }
 function finish(){
   const M=MODES[mode]; stop(); $('tPhase').textContent='Terminé'; $('tNow').textContent='Bravo, c’est fait. +'+M.pts+' pt'+(M.pts>1?'s':''); $('tClock').textContent='✓'; $('tNext').textContent=''; $('tIco').innerHTML='';
   const d=state.days[TODAY]||(state.days[TODAY]={}); d[M.habit]=1; save(); renderAll(); beep(1046,.6);
@@ -1333,7 +1351,7 @@ function stop(){ waiting=false; $('tClock').classList.remove('rest'); running=fa
 function resetTimer(){ stop(); doneEx=new Set(); $('tIco').innerHTML=icon(curEx()[0].ico,'big faint'); $('tPhase').textContent='Prêt'; $('tNow').textContent='Appuyez sur Démarrer'; $('tClock').textContent='0:00'; $('tClock').classList.remove('rest'); $('tNext').textContent=''; renderSteps(-1); }
 $('tStart').addEventListener('click',async()=>{
   try{ if(!actx){const C=window.AudioContext||window.webkitAudioContext; if(C) actx=new C();} }catch(e){}
-  if(!running){ S=seq(); doneEx=new Set(); running=true; paused=false; $('tStage').classList.remove('done'); go(0); if(tCamPref&&!tCamOn) camOn();
+  if(!running){ S=seq(); doneEx=new Set(); skippedEx=new Set(); running=true; paused=false; $('tStage').classList.remove('done'); const st0=startIdx; startIdx=0; go(st0); if(tCamPref&&!tCamOn) camOn();
     try{ if(navigator.wakeLock) wake=await navigator.wakeLock.request('screen'); }catch(e){}
     tick=setInterval(()=>{ if(paused) return; if(camWait()){ markWait(true); return; } markWait(false); left--; const s=S[idx];
       if(s.sides&&left===s.t/2){ beep(990,.3); paint(); }
@@ -1342,7 +1360,7 @@ $('tStart').addEventListener('click',async()=>{
     $('tStart').textContent='Pause'; $('tSkip').disabled=false; $('tReset').disabled=false;
   } else { paused=!paused; $('tStart').textContent=paused?'Reprendre':'Pause'; }
 });
-$('tSkip').addEventListener('click',()=>{ if(running) go(idx+1); });
+$('tSkip').addEventListener('click',()=>{ if(!running) return; const s=S[idx]; if(s&&!s.rest&&!doneEx.has(s.i)) skippedEx.add(s.i); go(idx+1); });
 $('tReset').addEventListener('click',resetTimer);
 renderSteps(-1); $('tIco').innerHTML=icon(curEx()[0].ico,'big faint');
 document.querySelectorAll('[data-ico]').forEach(el=>el.insertAdjacentHTML('afterbegin',icon(el.dataset.ico)));
