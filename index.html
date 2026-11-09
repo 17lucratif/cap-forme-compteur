@@ -102,7 +102,7 @@ textarea{width:100%;min-height:96px;resize:vertical}
 .lvl{display:flex;gap:6px;flex-wrap:wrap}
 .lvl button{font:inherit;font-size:.9rem;border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:999px;padding:6px 12px;cursor:pointer}
 .lvl button[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
-.timer{display:grid;justify-items:center;gap:6px;padding:18px 12px;background:var(--sunk);border-radius:14px;text-align:center}
+.timer{position:relative;display:grid;justify-items:center;gap:6px;padding:18px 12px;background:var(--sunk);border-radius:14px;text-align:center}
 .timer .now{font-family:var(--display);font-weight:700;font-size:1.7rem;line-height:1.1;text-wrap:balance}
 .timer .clock{font-family:var(--display);font-weight:700;font-size:4.2rem;line-height:1;font-variant-numeric:tabular-nums}
 .timer .clock.rest{color:var(--gold)}
@@ -214,7 +214,7 @@ ol.board small{display:block;color:var(--muted);font-size:.8rem}
 .topk .fill::after{content:"";position:absolute;inset:0;border-radius:999px;background:linear-gradient(180deg,rgba(255,255,255,.28),rgba(255,255,255,0) 60%)}
 .topk .txt{position:relative;z-index:1;text-shadow:0 1px 0 rgba(255,255,255,.45);display:flex;justify-content:space-between;align-items:center;height:100%;padding:0 12px;font-family:var(--display);font-weight:700;font-size:1rem;letter-spacing:.02em;color:var(--fg);font-variant-numeric:tabular-nums}
 .topk .txt small{font-weight:600;opacity:.8}
-.clubstep{display:grid;justify-items:center;gap:6px;padding:16px 12px;background:var(--sunk);border-radius:14px;text-align:center}
+.clubstep{position:relative;display:grid;justify-items:center;gap:6px;padding:16px 12px;background:var(--sunk);border-radius:14px;text-align:center}
 .clubstep .ico{width:104px;height:104px}
 .clubstep .what{font-family:var(--display);font-weight:700;font-size:1.6rem;line-height:1.1}
 .clubstep .do{font-size:1.05rem;font-weight:600}
@@ -223,8 +223,12 @@ ol.board small{display:block;color:var(--muted);font-size:.8rem}
 .clubstep .tip{font-size:.88rem;color:var(--muted);max-width:420px}
 .kg{display:flex;gap:6px;align-items:center;justify-content:center;flex-wrap:wrap}
 .kg input{width:90px}
-ol.steps li.done{opacity:.55}
-ol.steps li.done .dur::after{content:" ✓";color:var(--accent)}
+.okb{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:50%;background:#2FB672;color:#fff;font-weight:700;font-size:1.05rem;box-shadow:0 2px 6px rgba(47,182,114,.35)}
+ol.steps li.done>span:not(.dur){color:var(--muted)}
+ol.steps li.done .ico{stroke:#2FB672}
+.bigok{position:absolute;left:50%;top:50%;z-index:6;width:120px;height:120px;margin:-60px 0 0 -60px;border-radius:50%;background:#2FB672;color:#fff;display:grid;place-items:center;font-size:4.2rem;font-weight:700;box-shadow:0 8px 30px rgba(47,182,114,.45);animation:okpop .9s ease-out forwards;pointer-events:none}
+@keyframes okpop{0%{transform:scale(.3);opacity:0}25%{transform:scale(1.08);opacity:1}70%{transform:scale(1);opacity:1}100%{transform:scale(1);opacity:0}}
+@media (prefers-reduced-motion:reduce){.bigok{animation:none;opacity:0}}
 .bticks{position:relative;display:flex;justify-content:space-between;font-size:.75rem;color:var(--muted);height:1.1em}
 #bMarkTxt{position:absolute;top:0;transform:translateX(-100%);white-space:nowrap;padding-right:4px}
 .weekline{display:grid;gap:6px;padding-top:12px;border-top:1px solid var(--line)}
@@ -577,6 +581,7 @@ body.fs-on{overflow:hidden}
         </div>
         <div class="clubstep" id="clStep">
           <div class="label" id="clPos">Prêt</div>
+          <div class="bigok" id="clOk" hidden aria-hidden="true">✓</div>
           <div id="clIco"></div>
           <div class="what" id="clWhat">Séance au Forest Hill</div>
           <div class="do" id="clDo">Tapis, machines de musculation, rameur</div>
@@ -594,6 +599,7 @@ body.fs-on{overflow:hidden}
       </div>
       <div class="timer" id="tBox">
         <div class="label" id="tPhase">Prêt</div>
+        <div class="bigok" id="tOk" hidden aria-hidden="true">✓</div>
         <div id="tIco"></div>
         <div class="stage tstage" id="tStage" hidden>
           <video id="tVid" playsinline muted></video>
@@ -1200,11 +1206,13 @@ function seq(){
   for(let k=0;k<r.rounds;k++) EX_REVEIL.forEach((e,i)=>{out.push({...e,i,t:r.work,rest:false,round:k}); if(!(k===r.rounds-1&&i===EX_REVEIL.length-1)) out.push({n:'Récupération',s:'',i,t:r.rest,rest:true,round:k});});
   return out;
 }
+let doneEx=new Set();
+function okFlash(id){ const el=document.getElementById(id); if(!el) return; el.hidden=true; void el.offsetWidth; el.hidden=false; clearTimeout(el._t); el._t=setTimeout(()=>{ el.hidden=true; },950); }
 function renderSteps(cur){
   const r=ROUT[lvl]; const ol=document.getElementById('steps'); ol.innerHTML='';
-  curEx().forEach((e,i)=>{const li=document.createElement('li'); if(cur===i)li.className='cur';
+  curEx().forEach((e,i)=>{const li=document.createElement('li'); const dn=doneEx.has(i); li.className=cur===i?'cur':dn?'done':'';
     const dur= mode==='reveil' ? r.work+' s'+(r.rounds>1?' ×'+r.rounds:'') : (e.sides? (e.t/2)+' s / côté' : e.t+' s');
-    li.innerHTML=icon(e.ico)+'<span>'+e.n+'<small>'+e.s+'</small></span><span class="dur">'+dur+'</span>'; ol.appendChild(li);});
+    li.innerHTML=icon(e.ico)+'<span>'+e.n+'<small>'+e.s+'</small></span><span class="dur">'+(dn&&cur!==i?'<span class="okb" aria-label="fait">✓</span>':dur)+'</span>'; ol.appendChild(li);});
 }
 const $=id=>document.getElementById(id);
 function setMode(m){
@@ -1234,7 +1242,7 @@ function clubPlan(tours){
   st.push({k:'cardio',n:'Étirements',ico:'enfant',tip:'Sans à-coups, jamais jusqu’à la douleur.',ph:[{t:40,d:'Quadriceps · 20 s par jambe'},{t:40,d:'Ischio-jambiers · 20 s par jambe'},{t:40,d:'Pectoraux · dans un encadrement'}]});
   return st;
 }
-let CL={on:false,plan:[],i:0,ph:0,left:0,rest:false,paused:false,iv:null,wake:null};
+let CL={on:false,plan:[],i:0,ph:0,left:0,rest:false,paused:false,iv:null,wake:null,done:new Set()};
 const clTours=()=>+(state.clubTours||2);
 function clubRender(){
   if(CL.on) return;
@@ -1246,13 +1254,14 @@ function clubRender(){
 }
 function clubList(cur){
   $('clList').innerHTML=CL.plan.map((s,i)=>{ const dur=s.k==='set'?'Tour '+s.tour+' · 12 rép.':fmt(s.ph.reduce((a,p)=>a+p.t,0));
-    return '<li class="'+(i===cur?'cur':i<cur?'done':'')+'">'+icon(s.ico)+'<span>'+s.n+'<small>'+(s.k==='set'?((state.charges&&state.charges[s.m.id])?'dernière fois '+nf(state.charges[s.m.id].kg)+' kg':'charge à trouver'):s.ph[0].d)+'</small></span><span class="dur">'+dur+'</span></li>'; }).join('');
+    const dn=CL.done&&CL.done.has(i)&&i!==cur;
+    return '<li class="'+(i===cur?'cur':dn?'done':'')+'">'+icon(s.ico)+'<span>'+s.n+'<small>'+(s.k==='set'?((state.charges&&state.charges[s.m.id])?'dernière fois '+nf(state.charges[s.m.id].kg)+' kg':'charge à trouver'):s.ph[0].d)+'</small></span><span class="dur">'+(dn?'<span class="okb" aria-label="fait">✓</span>':dur)+'</span></li>'; }).join('');
   const li=$('clList').children[cur]; if(li&&CL.on) li.scrollIntoView({block:'nearest',behavior:'smooth'});
 }
 document.querySelectorAll('#clubTours button').forEach(b=>b.addEventListener('click',()=>{ if(CL.on) return; state.clubTours=+b.dataset.t; save(); clubRender(); }));
 function clubShow(){
   const s=CL.plan[CL.i]; $('clPos').textContent='Étape '+(CL.i+1)+' / '+CL.plan.length+(s.k==='set'?' · tour '+s.tour+'/'+s.tours:'');
-  $('clIco').innerHTML=icon(s.ico,'big'+(CL.rest?' faint':'')); $('clWhat').textContent=s.n; $('clTip').textContent=s.tip||''; clubList(CL.i);
+  $('clIco').innerHTML=icon(s.ico,'big'+(CL.rest?' faint':'')); $('clWhat').textContent=s.n; $('clTip').textContent=s.tip||''; clubList(CL.rest?CL.i+1:CL.i);
   if(s.k==='cardio'){ $('clKg').hidden=true; $('clDo').textContent=s.ph[CL.ph].d+(s.ph.length>1?' ('+(CL.ph+1)+'/'+s.ph.length+')':''); $('clClock').textContent=fmt(CL.left); $('clClock').classList.remove('rest'); $('clMain').textContent=CL.paused?'Reprendre':'Pause'; }
   else if(CL.rest){ const nx=CL.plan[CL.i+1]; $('clDo').textContent='Repos · ensuite : '+(nx?nx.n:'fin'); $('clClock').textContent=fmt(CL.left); $('clClock').classList.add('rest'); $('clKg').hidden=true; $('clMain').textContent='Passer le repos'; }
   else { $('clDo').textContent='12 répétitions · lent et contrôlé'; $('clClock').textContent=''; $('clKg').hidden=false;
@@ -1271,13 +1280,14 @@ function clubTick(){
   if(CL.left>0){ $('clClock').textContent=fmt(CL.left); return; }
   if(CL.rest){ clubGo(CL.i+1); return; }
   if(CL.ph<s.ph.length-1){ CL.ph++; CL.left=s.ph[CL.ph].t; beep(990,.3); speak(s.ph[CL.ph].d,true); clubShow(); return; }
+  CL.done.add(CL.i); okFlash('clOk'); if(sndOn) chime();
   clubGo(CL.i+1);
 }
 async function clubStart(){
-  ensureAudio(); CL.on=true; CL.plan=clubPlan(clTours());
+  ensureAudio(); CL.on=true; CL.done=new Set(); CL.plan=clubPlan(clTours());
   $('clSkip').disabled=false; $('clStop').disabled=false;
-  try{ if(navigator.wakeLock) CL.wake=await navigator.wakeLock.request('screen'); }catch(e){}
   clearInterval(CL.iv); CL.iv=setInterval(clubTick,1000); clubGo(0);
+  try{ if(navigator.wakeLock) navigator.wakeLock.request('screen').then(w=>{ CL.wake=w; }).catch(()=>{}); }catch(e){}
 }
 function clubStop(silent){ if(!CL.on&&!silent) return; CL.on=false; clearInterval(CL.iv); CL.iv=null; try{ CL.wake&&CL.wake.release(); }catch(e){} CL.wake=null; if(!silent||mode==='club') clubRender(); }
 function clubFinish(){
@@ -1292,7 +1302,7 @@ $('clMain').addEventListener('click',()=>{
   if(CL.rest){ clubGo(CL.i+1); return; }
   const kg=parseFloat(String($('clKgIn').value).replace(',','.'));
   if(kg>=0&&kg<=300){ state.charges=state.charges||{}; state.charges[s.m.id]={kg:Math.round(kg*10)/10,d:TODAY}; save(); }
-  if(sndOn) chime(); CL.rest=true; CL.left=s.rest; speak('Bien. Une minute de repos.',true); clubShow();
+  if(sndOn) chime(); CL.done.add(CL.i); okFlash('clOk'); CL.rest=true; CL.left=s.rest; speak('Bien. Une minute de repos.',true); clubShow();
 });
 $('clSkip').addEventListener('click',()=>{ if(CL.on) clubGo(CL.i+1); });
 $('clStop').addEventListener('click',()=>clubStop());
@@ -1310,24 +1320,25 @@ function paint(){
   { const nx0=s.rest?S.slice(idx+1).find(x=>!x.rest):s; $('tIco').innerHTML=nx0?icon(nx0.ico,'big'+(s.rest?' faint':'')):''; exIco('tExIco',nx0,s.rest?'Ensuite :':'',s.rest); }
   $('tClock').textContent=fmt(left); $('tClock').classList.toggle('rest',s.rest);
   const nx=S.slice(idx+1).find(x=>!x.rest); $('tNext').textContent=nx?'Ensuite : '+nx.n:'Dernier';
-  renderSteps(s.i);
+  renderSteps(s.rest?((S.slice(idx+1).find(x=>!x.rest)||{i:-1}).i):s.i);
 }
 function go(i){ idx=i; if(idx>=S.length){finish();return} left=S[idx].t; beep(S[idx].rest?440:880,.25); paint(); }
 function finish(){
   const M=MODES[mode]; stop(); $('tPhase').textContent='Terminé'; $('tNow').textContent='Bravo, c’est fait. +'+M.pts+' pt'+(M.pts>1?'s':''); $('tClock').textContent='✓'; $('tNext').textContent=''; $('tIco').innerHTML='';
   const d=state.days[TODAY]||(state.days[TODAY]={}); d[M.habit]=1; save(); renderAll(); beep(1046,.6);
+  curEx().forEach((e,i)=>doneEx.add(i)); renderSteps(-1);
   if(tCamOn){ const st=$('tStage'); st.classList.remove('live'); st.classList.add('done'); $('tCnt').hidden=true; tcue('Bravo, c’est fait !','up'); }
 }
 function stop(){ waiting=false; $('tClock').classList.remove('rest'); running=false; clearInterval(tick); tick=null; $('tStart').textContent='Démarrer'; $('tSkip').disabled=true; $('tReset').disabled=true; try{wake&&wake.release()}catch(e){} wake=null; }
-function resetTimer(){ stop(); $('tIco').innerHTML=icon(curEx()[0].ico,'big faint'); $('tPhase').textContent='Prêt'; $('tNow').textContent='Appuyez sur Démarrer'; $('tClock').textContent='0:00'; $('tClock').classList.remove('rest'); $('tNext').textContent=''; renderSteps(-1); }
+function resetTimer(){ stop(); doneEx=new Set(); $('tIco').innerHTML=icon(curEx()[0].ico,'big faint'); $('tPhase').textContent='Prêt'; $('tNow').textContent='Appuyez sur Démarrer'; $('tClock').textContent='0:00'; $('tClock').classList.remove('rest'); $('tNext').textContent=''; renderSteps(-1); }
 $('tStart').addEventListener('click',async()=>{
   try{ if(!actx){const C=window.AudioContext||window.webkitAudioContext; if(C) actx=new C();} }catch(e){}
-  if(!running){ S=seq(); running=true; paused=false; $('tStage').classList.remove('done'); go(0); if(tCamPref&&!tCamOn) camOn();
+  if(!running){ S=seq(); doneEx=new Set(); running=true; paused=false; $('tStage').classList.remove('done'); go(0); if(tCamPref&&!tCamOn) camOn();
     try{ if(navigator.wakeLock) wake=await navigator.wakeLock.request('screen'); }catch(e){}
     tick=setInterval(()=>{ if(paused) return; if(camWait()){ markWait(true); return; } markWait(false); left--; const s=S[idx];
       if(s.sides&&left===s.t/2){ beep(990,.3); paint(); }
       if(left<=3&&left>0) beep(660,.08);
-      if(left<=0) go(idx+1); else $('tClock').textContent=fmt(left); },1000);
+      if(left<=0){ if(!s.rest){ doneEx.add(s.i); okFlash('tOk'); if(sndOn) chime(); } go(idx+1); } else $('tClock').textContent=fmt(left); },1000);
     $('tStart').textContent='Pause'; $('tSkip').disabled=false; $('tReset').disabled=false;
   } else { paused=!paused; $('tStart').textContent=paused?'Reprendre':'Pause'; }
 });
