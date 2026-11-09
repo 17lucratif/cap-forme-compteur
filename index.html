@@ -256,6 +256,10 @@ ol.steps li.done .ico{stroke:#2FB672}
 .est li{display:grid;grid-template-columns:1fr auto;gap:8px;font-size:.92rem}
 .est li small{color:var(--muted)}
 .est .tot{font-family:var(--display);font-weight:700;font-size:1.6rem}
+.habit .auto{display:inline-block;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;background:var(--accent-soft);color:var(--accent);padding:2px 6px;border-radius:6px;margin-left:6px;vertical-align:2px}
+.habit.part{border-color:var(--accent);border-style:dashed}
+.habit.part .pts{color:var(--accent)}
+.habit input:disabled{opacity:1}
 .needs{display:grid;gap:8px}
 .pbar{position:relative;height:30px;border-radius:999px;background:var(--sunk);box-shadow:inset 0 0 0 1px var(--line);overflow:hidden}
 .pbar .fill{position:absolute;inset:0 auto 0 0;width:0%;border-radius:999px;transition:width .6s ease}
@@ -796,15 +800,15 @@ const HABITS = [
 ];
 
 /* ---------- state ---------- */
-let state = {profil:null, meals:{}, days:{}, weights:[], level:0, reps:{}};
+let state = {auto:{}, profil:null, meals:{}, days:{}, weights:[], level:0, reps:{}};
 let saveT = null, uid = 'local', remoteSave = null;
 const LS = 'capforme-v1';
 const lsKey=()=>uid==='local'?LS:LS+'-'+uid;
 function lsGet(){try{const s=localStorage.getItem(lsKey());return s?JSON.parse(s):null}catch(e){return null}}
 function lsSet(){try{localStorage.setItem(lsKey(),JSON.stringify(state))}catch(e){}}
-function freshState(){ return {profil:null, meals:{}, days:{}, weights:[], level:0, reps:{}}; }
+function freshState(){ return {auto:{}, profil:null, meals:{}, days:{}, weights:[], level:0, reps:{}}; }
 function loadState(){ state=freshState(); merge(lsGet()); }
-function merge(s){ if(s&&typeof s==='object'){ state={charges:(s.charges&&typeof s.charges==='object')?s.charges:{},clubTours:+s.clubTours||2,profil:(s.profil&&typeof s.profil==='object')?s.profil:null,meals:(s.meals&&typeof s.meals==='object')?s.meals:{},days:s.days||{},weights:Array.isArray(s.weights)?s.weights:[],level:+s.level||0,reps:(s.reps&&typeof s.reps==='object')?s.reps:{}}; } }
+function merge(s){ if(s&&typeof s==='object'){ state={auto:(s.auto&&typeof s.auto==='object')?s.auto:{},charges:(s.charges&&typeof s.charges==='object')?s.charges:{},clubTours:+s.clubTours||2,profil:(s.profil&&typeof s.profil==='object')?s.profil:null,meals:(s.meals&&typeof s.meals==='object')?s.meals:{},days:s.days||{},weights:Array.isArray(s.weights)?s.weights:[],level:+s.level||0,reps:(s.reps&&typeof s.reps==='object')?s.reps:{}}; } }
 function save(){ lsSet(); clearTimeout(saveT); saveT=setTimeout(()=>{ if(remoteSave) remoteSave(); },800); }
 merge(lsGet());
 
@@ -816,10 +820,19 @@ const TODAY=key(today);
 let sel=new Date(today);
 function monday(d){const m=new Date(d);const wd=(m.getDay()+6)%7;m.setDate(m.getDate()-wd);return m}
 const KCAL_PTS=2, DAY_MAX=HABITS.reduce((a,h)=>a+h.pts,0)+KCAL_PTS;
+// points calculés depuis ce qui est réellement fait (routines, club, compteur) — part de 0 à 1 par habitude
+const SEANCE_REPS=80; // répétitions au compteur pour valoir une séance complète
+function autoFrac(k,id){
+  const a=(state.auto&&state.auto[k])||{}; let f=+a[id]||0;
+  if(id==='seance'){ const r=(state.reps&&state.reps[k])||{}; const tot=Object.values(r).reduce((x,y)=>x+(+y||0),0); f=Math.max(f,Math.min(1,tot/SEANCE_REPS)); }
+  return Math.max(0,Math.min(1,f));
+}
+function habitPts(k,h){ const e=state.days[k]||{}; const man=e[h.id]?h.pts:0; const au=Math.round(h.pts*autoFrac(k,h.id)); return Math.max(man,au); }
+function setAuto(id,f){ state.auto=state.auto||{}; const a=state.auto[TODAY]||(state.auto[TODAY]={}); const v=Math.round(Math.max(+a[id]||0,Math.min(1,f))*100)/100; if(v===a[id]) return; a[id]=v; save(); renderWeek(); renderHabits(); renderStreak(); renderDay(); }
 // critère calories : entre 80 et 105 % de l'objectif (récompense le fait de bien manger, pas de trop restreindre)
 function kcalDay(k){ const ms=(state.meals&&state.meals[k])||[]; const b=besoin(); const t=ms.reduce((a,m)=>a+(+m.kcal||0),0);
   if(!b) return {b:null,t,ok:false}; return {b,t,ok:ms.length>0&&t>=b.cible*0.8&&t<=b.cible*1.05}; }
-function dayPts(k){const e=state.days[k]||{};return HABITS.reduce((s,h)=>s+(e[h.id]?h.pts:0),0)+(kcalDay(k).ok?KCAL_PTS:0)}
+function dayPts(k){return HABITS.reduce((s,h)=>s+habitPts(k,h),0)+(kcalDay(k).ok?KCAL_PTS:0)}
 function renderDay(){
   const k=key(sel), p=dayPts(k), pc=Math.round(p/DAY_MAX*100), isT=k===TODAY;
   $('dLabel').textContent=isT?'Challenge du jour':'Challenge · '+DLONG[sel.getDay()]+' '+sel.getDate();
@@ -890,11 +903,13 @@ function renderHabits(){
   document.getElementById('dayTitle').textContent= k===TODAY? 'Aujourd’hui' : DLONG[wd].charAt(0).toUpperCase()+DLONG[wd].slice(1)+' '+sel.getDate()+' '+MONTHS[sel.getMonth()];
   const box=document.getElementById('habits'); box.innerHTML='';
   HABITS.forEach(hb=>{
-    const lab=document.createElement('label'); lab.className='habit'+(e[hb.id]?' done':'');
+    const af=autoFrac(k,hb.id), ap=habitPts(k,hb), full=ap>=hb.pts, man=!!e[hb.id];
+    const lab=document.createElement('label'); lab.className='habit'+(full?' done':ap>0?' part':'');
     const id='h-'+hb.id;
     const planned = hb.planned && PLAN[wd].key;
     const go= k===TODAY ? goFor(hb.id,wd) : null;
-    lab.innerHTML='<input type="checkbox" id="'+id+'"'+(e[hb.id]?' checked':'')+'>'+icon(hb.ico)+'<span class="t">'+hb.label+(planned?'<span class="tag">prévue</span>':'')+'<small>'+(hb.planned&&PLAN[wd].key?PLAN[wd].t:hb.sub)+'</small></span>'+(go?'<button type="button" class="go" aria-label="'+go.aria+'">'+(e[hb.id]?'Refaire':go.txt)+'</button>':'')+'<span class="pts">+'+hb.pts+'</span>';
+    const autoTxt=af>0&&!man?'<span class="auto">'+(af>=1?'✓ fait':Math.round(af*100)+' % fait')+' · auto</span>':'';
+    lab.innerHTML='<input type="checkbox" id="'+id+'"'+(man||(full&&af>=1)?' checked':'')+(af>=1&&!man?' disabled title="Validé automatiquement"':'')+'>'+icon(hb.ico)+'<span class="t">'+hb.label+(planned?'<span class="tag">prévue</span>':'')+autoTxt+'<small>'+(hb.planned&&PLAN[wd].key?PLAN[wd].t:hb.sub)+'</small></span>'+(go?'<button type="button" class="go" aria-label="'+go.aria+'">'+(full?'Refaire':af>0?'Reprendre':go.txt)+'</button>':'')+'<span class="pts">'+(ap>0&&!full?ap+'/'+hb.pts:'+'+hb.pts)+'</span>';
     if(go) lab.addEventListener('click',ev=>{ if(ev.target.tagName==='INPUT') return; ev.preventDefault(); go.run(); });
     lab.querySelector('input').addEventListener('change',ev=>{
       const d=state.days[k]||(state.days[k]={}); if(ev.target.checked) d[hb.id]=1; else delete d[hb.id];
@@ -1289,7 +1304,7 @@ function clubTick(){
   if(CL.left>0){ $('clClock').textContent=fmt(CL.left); return; }
   if(CL.rest){ clubGo(CL.i+1); return; }
   if(CL.ph<s.ph.length-1){ CL.ph++; CL.left=s.ph[CL.ph].t; beep(990,.3); speak(s.ph[CL.ph].d,true); clubShow(); return; }
-  CL.done.add(CL.i); okFlash('clOk'); if(sndOn) chime();
+  CL.done.add(CL.i); okFlash('clOk'); if(sndOn) chime(); setAuto('seance',CL.done.size/CL.plan.length);
   clubGo(CL.i+1);
 }
 async function clubStart(at){
@@ -1300,8 +1315,8 @@ async function clubStart(at){
 }
 function clubStop(silent){ if(!CL.on&&!silent) return; CL.on=false; clearInterval(CL.iv); CL.iv=null; try{ CL.wake&&CL.wake.release(); }catch(e){} CL.wake=null; if(!silent||mode==='club') clubRender(); }
 function clubFinish(){
-  clubStop(true); const d=state.days[TODAY]||(state.days[TODAY]={}); d.seance=1; save(); renderAll();
-  $('clPos').textContent='Terminé'; $('clIco').innerHTML=''; $('clWhat').textContent='Bravo, séance terminée !'; $('clDo').textContent='+3 points · charges enregistrées pour la prochaine fois'; $('clClock').textContent='✓'; $('clKg').hidden=true; $('clTip').textContent='';
+  clubStop(true); setAuto('seance',CL.done.size/CL.plan.length); renderAll();
+  $('clPos').textContent='Terminé'; $('clIco').innerHTML=''; $('clWhat').textContent='Bravo, séance terminée !'; { const n=CL.done.size, tot=CL.plan.length, pt=Math.round(3*n/tot); $('clDo').textContent=(n===tot?'+3 points':n+' étapes sur '+tot+' · +'+pt+' pt'+(pt>1?'s':''))+' · charges enregistrées pour la prochaine fois'; } $('clClock').textContent='✓'; $('clKg').hidden=true; $('clTip').textContent='';
   $('clMain').textContent='Recommencer'; clubList(CL.plan.length); if(sndOn) chime(true); speak('Bravo, séance terminée !',true);
 }
 $('clMain').addEventListener('click',()=>{
@@ -1311,7 +1326,7 @@ $('clMain').addEventListener('click',()=>{
   if(CL.rest){ clubGo(CL.i+1); return; }
   const kg=parseFloat(String($('clKgIn').value).replace(',','.'));
   if(kg>=0&&kg<=300){ state.charges=state.charges||{}; state.charges[s.m.id]={kg:Math.round(kg*10)/10,d:TODAY}; save(); }
-  if(sndOn) chime(); CL.done.add(CL.i); okFlash('clOk'); CL.rest=true; CL.left=s.rest; speak('Bien. Une minute de repos.',true); clubShow();
+  if(sndOn) chime(); CL.done.add(CL.i); okFlash('clOk'); setAuto('seance',CL.done.size/CL.plan.length); CL.rest=true; CL.left=s.rest; speak('Bien. Une minute de repos.',true); clubShow();
 });
 $('clSkip').addEventListener('click',()=>{ if(!CL.on) return; if(!CL.rest&&!CL.done.has(CL.i)) CL.skip.add(CL.i); clubGo(CL.i+1); });
 $('clList').addEventListener('click',ev=>{ const li=ev.target.closest('li'); if(!li) return; const i=[...$('clList').children].indexOf(li); if(i<0) return;
@@ -1342,9 +1357,9 @@ function pickEx(i){
 function go(i){ idx=i;
   if(idx>=S.length){ const j=S.findIndex(x=>!x.rest&&!doneEx.has(x.i)&&!skippedEx.has(x.i)); if(j<0){ finish(); return; } idx=j; speak('Il reste '+S[j].n,false); } left=S[idx].t; beep(S[idx].rest?440:880,.25); paint(); }
 function finish(){
-  const M=MODES[mode]; stop(); $('tPhase').textContent='Terminé'; $('tNow').textContent='Bravo, c’est fait. +'+M.pts+' pt'+(M.pts>1?'s':''); $('tClock').textContent='✓'; $('tNext').textContent=''; $('tIco').innerHTML='';
-  const d=state.days[TODAY]||(state.days[TODAY]={}); d[M.habit]=1; save(); renderAll(); beep(1046,.6);
-  curEx().forEach((e,i)=>doneEx.add(i)); renderSteps(-1);
+  const M=MODES[mode]; stop(); $('tPhase').textContent='Terminé'; { const n=doneEx.size, tot=curEx().length, pt=Math.round(M.pts*n/tot); $('tNow').textContent=n===tot?'Bravo, c’est fait. +'+M.pts+' pt'+(M.pts>1?'s':''):n+' exercice'+(n>1?'s':'')+' sur '+tot+' · +'+pt+' pt'+(pt>1?'s':''); } $('tClock').textContent='✓'; $('tNext').textContent=''; $('tIco').innerHTML='';
+  renderAll(); beep(1046,.6);
+  renderSteps(-1); setAuto(M.habit,doneEx.size/curEx().length);
   if(tCamOn){ const st=$('tStage'); st.classList.remove('live'); st.classList.add('done'); $('tCnt').hidden=true; tcue('Bravo, c’est fait !','up'); }
 }
 function stop(){ waiting=false; $('tClock').classList.remove('rest'); running=false; clearInterval(tick); tick=null; $('tStart').textContent='Démarrer'; $('tSkip').disabled=true; $('tReset').disabled=true; try{wake&&wake.release()}catch(e){} wake=null; }
@@ -1356,7 +1371,7 @@ $('tStart').addEventListener('click',async()=>{
     tick=setInterval(()=>{ if(paused) return; if(camWait()){ markWait(true); return; } markWait(false); left--; const s=S[idx];
       if(s.sides&&left===s.t/2){ beep(990,.3); paint(); }
       if(left<=3&&left>0) beep(660,.08);
-      if(left<=0){ if(!s.rest){ doneEx.add(s.i); okFlash('tOk'); if(sndOn) chime(); } go(idx+1); } else $('tClock').textContent=fmt(left); },1000);
+      if(left<=0){ if(!s.rest){ doneEx.add(s.i); okFlash('tOk'); if(sndOn) chime(); if(MODES[mode].habit) setAuto(MODES[mode].habit,doneEx.size/curEx().length); } go(idx+1); } else $('tClock').textContent=fmt(left); },1000);
     $('tStart').textContent='Pause'; $('tSkip').disabled=false; $('tReset').disabled=false;
   } else { paused=!paused; $('tStart').textContent=paused?'Reprendre':'Pause'; }
 });
@@ -1420,7 +1435,7 @@ async function startSession(kind){
   document.querySelector('.stage').classList.remove('done','win');
   ensureAudio(); cRun={kind,n:0,set:1,stage:'A',min:999,t:[],iv:null,resting:false,lost:0};
   $('cN').textContent='0'; $('cSet').textContent=cSets>1?'Série 1/'+cSets:''; setButtons(true,kind);
-  try{ if(navigator.wakeLock) cWake=await navigator.wakeLock.request('screen'); }catch(e){}
+  try{ if(navigator.wakeLock) navigator.wakeLock.request('screen').then(w=>{ cWake=w; }).catch(()=>{}); }catch(e){}
   if(kind==='guide'){ cue('Prêt ?','idle','C’est parti. '+cReps+' '+cx.short+'.'); later(guideRep,2200); }
   else cue(cx.upFirst?cx.cues[1]:cx.cues[0],cx.upFirst?'up':'');
 }
@@ -1434,7 +1449,7 @@ function count(){
   if(!cRun||cRun.resting) return;
   cRun.n++; cRun.unsent=(cRun.unsent||0)+1; $('cN').textContent=cRun.n;
   const c=$('cCnt'); c.classList.remove('pop'); void c.offsetWidth; c.classList.add('pop');
-  const r=state.reps[TODAY]||(state.reps[TODAY]={}); r[cx.id]=(r[cx.id]||0)+1; save(); renderToday();
+  const r=state.reps[TODAY]||(state.reps[TODAY]={}); r[cx.id]=(r[cx.id]||0)+1; save(); renderToday(); renderWeek(); renderHabits(); renderDay();
   flash(); chime();
   if(cRun.n>=cReps){ setDone(); return; }
   speak(String(cRun.n),false);
@@ -1770,6 +1785,7 @@ async function pullRemote(){
   if(data&&data.data){ const loc=state; merge(data.data);
     // garde ce qui a été fait hors ligne sur cet appareil
     Object.entries(loc.days||{}).forEach(([k,v])=>{ state.days[k]=Object.assign({},state.days[k]||{},v); });
+    Object.entries(loc.auto||{}).forEach(([k,v])=>{ const a=state.auto[k]||(state.auto[k]={}); Object.entries(v).forEach(([h,f])=>{ a[h]=Math.max(+a[h]||0,+f||0); }); });
     Object.entries(loc.meals||{}).forEach(([k,v])=>{ if(!state.meals[k]) state.meals[k]=v; });
     if(!state.profil&&loc.profil) state.profil=loc.profil;
     Object.entries(loc.reps||{}).forEach(([k,v])=>{ const r=state.reps[k]||(state.reps[k]={}); Object.entries(v).forEach(([e,n])=>{ r[e]=Math.max(r[e]||0,n); }); });
